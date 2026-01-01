@@ -1,0 +1,12 @@
+[
+    {
+        "heat_rate": 1.67,
+        "capacity": 400,
+        "start_up_costs": 15000
+    },
+    {
+        "heat_rate": 3.33,
+        "capacity": 100,
+        "start_up_costs": 2000
+    }
+]

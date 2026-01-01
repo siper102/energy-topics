@@ -1,0 +1,201 @@
+\documentclass{article}
+
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{Arbitrage-Free Valuation of a Gas-Fired Tolling Agreement}}
+\author{Model Specification}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% =====================================================
+\section{Objective}
+
+A gas-fired tolling agreement grants the holder the right, but not the obligation, 
+to convert natural gas into electricity at a specified power plant.
+Economically, it represents a \textbf{strip of American-style call options on the spark spread},
+with path dependency induced by start-up costs and unit-level dispatch constraints.
+
+% =====================================================
+\section{Market Characteristics}
+
+\begin{itemize}
+    \item \textbf{Natural Gas ($G_t$):} Storable commodity; forward curve derived from traded instruments.
+    \item \textbf{Electricity ($P_t$):} Non-storable commodity; forward curve is primitive.
+\end{itemize}
+
+The power spot price is defined consistently as:
+\[
+S_t := F_P(t,t).
+\]
+
+% =====================================================
+\section{Risk-Neutral Measure and No-Arbitrage}
+
+All valuation is performed under the risk-neutral measure $\mathbb Q$.
+No-arbitrage requires that traded forward prices are martingales.
+
+% -----------------------------------------------------
+\subsection{Natural Gas Dynamics under $\mathbb Q$}
+
+\begin{equation}
+dG_t = \mu_{\mathrm{fwd}}(t) G_t dt + \sigma_g G_t dW_t^{\mathbb Q,g},
+\quad
+\mu_{\mathrm{fwd}}(t) = \frac{\partial}{\partial t} \ln F_G(0,t)
+\end{equation}
+
+Ensuring:
+\[
+\mathbb E^{\mathbb Q}[G_t] = F_G(0,t).
+\]
+This gives us:
+\begin{equation}
+    G_{t} = F(0, t) \exp(-\frac{1}{2} \sigma_{g}^{2} t + \sigma_{g} W_t^{\mathbb Q,g})
+\end{equation}
+% -----------------------------------------------------
+\subsection{Power Dynamics under $\mathbb Q$ (MRJD with Compensation)}
+
+The power price is modeled as:
+\begin{equation}
+P_t = F_P(0,t)\exp(X_t),
+\qquad X_0 = 0
+\end{equation}
+
+where the stochastic factor $X_t$ follows:
+\begin{equation}
+\boxed{
+\begin{aligned}
+dX_t = {} & -\kappa X_t dt
++ \sigma_p dW_t^{\mathbb Q,p}
++ J dN_t \\
+& - \lambda\left(\mathbb E[e^{J}] - 1\right)dt
+\end{aligned}
+}
+\end{equation}
+
+with:
+\begin{itemize}
+    \item $N_t$: Poisson process with intensity $\lambda$
+    \item $J \sim \mathcal N(\mu_J, \sigma_J^2)$
+    \item $\mathbb E[e^{J}] = \exp(\mu_{J} + \frac{1}{2} \sigma_{J}^{2})$
+\end{itemize}
+
+Since:
+\[
+\mathbb E[e^{J}] = \exp\left(\mu_J + \tfrac12\sigma_J^2\right),
+\]
+the compensator ensures:
+\[
+\mathbb E^{\mathbb Q}[P_t] = F_P(0,t),
+\]
+thus preserving no-arbitrage.
+
+% -----------------------------------------------------
+\subsection{Correlation Structure}
+
+\begin{equation}
+dW_t^{\mathbb Q,g} \, dW_t^{\mathbb Q,p} = \rho \, dt
+\end{equation}
+
+% =====================================================
+\section{Physical Measure ($\mathbb P$)}
+
+The physical measure describes real-world price evolution and is used for risk management.
+
+\subsection{Gas}
+
+\begin{equation}
+dG_t = \mu_{\mathrm{real}} G_t dt + \sigma_g G_t dW_t^{\mathbb P,g}
+\end{equation}
+
+\subsection{Power}
+
+\begin{equation}
+d(\ln P_t) =
+\kappa(\theta_{\mathrm{LRMC}}(t) - \ln P_t)dt
++ \sigma_p dW_t^{\mathbb P,p}
++ J dN_t^{\mathbb P}
+\end{equation}
+
+Jump intensities and diffusion drifts may differ between $\mathbb P$ and $\mathbb Q$.
+
+% =====================================================
+\section{Plant Representation: Multiple Units}
+
+The plant consists of $N_{\mathrm{units}}$ independent units:
+
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+Unit & Heat Rate & Capacity & Start Cost \\
+\midrule
+$i$ & HR$_i$ & Cap$_i$ & $K_{\mathrm{start},i}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =====================================================
+\section{Spark Spread Payoff}
+
+For unit $i$ at hour $h$:
+
+\begin{equation}
+\pi_{h,i}
+=
+\left(
+P_{t_h}
+-
+\mathrm{HR}_i G_{t_h}
+\right)\cdot \mathrm{Cap}_i
+\end{equation}
+
+% =====================================================
+\section{Optimal Dispatch Problem}
+
+Daily dispatch is obtained by:
+
+\begin{equation}
+\text{Daily Value}_D =
+\sum_{i=1}^{N_{\mathrm{units}}}
+\max
+\left\{
+\sum_{h=1}^{24}\pi_{h,i}
+-
+K_{\mathrm{start},i}, 0
+\right\}
+\end{equation}
+
+A merit-order heuristic is applied for tractability.
+
+% =====================================================
+\section{Tolling Agreement Valuation}
+
+\begin{equation}
+V_0 =
+\sum_{D=1}^{365}
+e^{-rT_D}
+\mathbb E^{\mathbb Q}\left[\text{Daily Value}_D\right]
+\end{equation}
+
+% =====================================================
+\section{Monte Carlo Valuation Algorithm}
+
+\begin{tcolorbox}
+\begin{enumerate}
+    \item Simulate correlated $(G_t,X_t)$ paths under $\mathbb Q$.
+    \item Construct $P_t = F_P(0,t)e^{X_t}$.
+    \item Compute hourly spark spreads for each unit.
+    \item Apply dispatch and start logic.
+    \item Average discounted cashflows.
+\end{enumerate}
+\end{tcolorbox}
+
+\end{document}
