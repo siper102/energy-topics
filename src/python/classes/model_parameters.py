@@ -1,28 +1,42 @@
 import dataclasses
 from dataclasses import dataclass
+from typing import Dict
 
 @dataclass
 class StochasticParameters:
-    # Volatility of gas price (in per cent)
+    """
+    Parameters for the stochastic processes used in the tolling agreement valuation.
+    """
+    
     sigma_g: float
-    # Volatility of power price (in per cent)
+    """Volatility of gas price (annualized, e.g., 0.4 for 40%). Calibrated to GBM."""
+    
     sigma_p: float
-    # mean reversion speed (unitless)
+    """Volatility of power price (annualized). Diffusion component of MRJD."""
+    
     kappa: float
-    # number of jumps per day (jumps / day)
+    """Mean reversion speed for power prices (unitless). High value means fast reversion."""
+    
     lambda_j: float
-    # mean jump height of power price (€ / mwh)
+    """Jump intensity for power prices (expected number of jumps per year)."""
+    
     mu_j: float
-    # variance of jump height (€ / mwh)
+    """Mean of the log-jump size for power prices."""
+    
     sigma_j: float
-    # correlation of gas- and power prices (€ / mwh^2)
+    """Standard deviation of the log-jump size for power prices."""
+    
     rho: float
-    # Risk free interest (% / year)
+    """Correlation between the Brownian motions of Gas and Power."""
+    
     r: float
+    """Risk-free interest rate (annualized, e.g., 0.02 for 2%)."""
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict:
+        """Converts the parameters to a dictionary."""
         return dataclasses.asdict(self)
     
     @staticmethod
-    def from_dict(dictionary: dict) -> "StochasticParameters":
+    def from_dict(dictionary: Dict) -> "StochasticParameters":
+        """Creates a StochasticParameters instance from a dictionary."""
         return StochasticParameters(**dictionary)
