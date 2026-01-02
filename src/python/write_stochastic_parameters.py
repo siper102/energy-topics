@@ -1,6 +1,15 @@
+"""
+Script to generate and save stochastic model parameters to a JSON file.
+
+This script creates a `StochasticParameters` object with defined model parameters
+(volatility, mean reversion, jumps, etc.) and saves it as a JSON object to
+`data/parameters/parameters.json`.
+"""
+
 import json
-from classes.model_parameters import StochasticParameters
 import pathlib
+
+from classes.model_parameters import StochasticParameters
 
 # path if data
 path = pathlib.Path(__file__).parent.parent.parent.joinpath("data").joinpath("parameters")
@@ -19,5 +28,6 @@ if __name__ == "__main__":
         r=0.02,
     )
 
+    print(f"Writing stochastic parameters to {path.joinpath('parameters.json')}")
     with open(path.joinpath("parameters.json"), "w") as f:
         json.dump(parameters.to_dict(), f, indent=4)

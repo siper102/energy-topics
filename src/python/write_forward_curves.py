@@ -1,6 +1,14 @@
-import pandas as pd
-import numpy as np
+"""
+Script to generate and save hourly forward curves for Gas and Power.
+
+Generates synthetic hourly data for 2025 using a simple sine-wave seasonality model
+and saves the result as CSV files in `data/forward-curve/`.
+"""
+
 import pathlib
+
+import numpy as np
+import pandas as pd
 
 # -------------------------------------------------------------------
 # Time grid (hourly for 2025)
@@ -34,9 +42,15 @@ path = pathlib.Path(__file__).parent.parent.parent.joinpath("data").joinpath("fo
 # -------------------------------------------------------------------
 # Forward curve functions
 # -------------------------------------------------------------------
-def get_FG(t) -> pd.DataFrame:
+def get_FG(t: np.ndarray) -> pd.DataFrame:
     """
-    Get the hourly forward curve of gas prices
+    Get the hourly forward curve of gas prices.
+
+    Args:
+        t: Array of time points in years.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'date' index and 'price' column.
     """
     curve = base_price_gas + seasonality_gas * np.sin(2 * np.pi * t)
     return pd.DataFrame(
@@ -46,9 +60,15 @@ def get_FG(t) -> pd.DataFrame:
         }
     ).set_index("date")
 
-def get_FP(t) -> pd.DataFrame:
+def get_FP(t: np.ndarray) -> pd.DataFrame:
     """
-    Get the hourly forward curve of electricity prices
+    Get the hourly forward curve of electricity prices.
+
+    Args:
+        t: Array of time points in years.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'date' index and 'price' column.
     """
     curve = base_price_power + seasonality_power * np.sin(2 * np.pi * t)
     return pd.DataFrame(
