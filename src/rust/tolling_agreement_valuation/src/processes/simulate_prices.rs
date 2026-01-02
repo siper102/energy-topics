@@ -6,8 +6,10 @@ use anyhow::Result;
 use ndarray::{array, Array1, Array2, Array3, Axis};
 use ndarray_linalg::cholesky::Cholesky;
 use ndarray_linalg::UPLO;
+use ndarray_rand::rand::thread_rng;
 use ndarray_rand::rand_distr::StandardNormal;
 use ndarray_rand::RandomExt;
+use rayon::prelude::*;
 
 pub struct Simulator;
 
@@ -23,40 +25,52 @@ impl Simulator {
     ) -> Result<SimulationResult> {
         let n_points = forward_curve_gas.len();
 
-        // 1. Generate Correlated Noise
-        let mut eps = Self::simulate_noise(model_parameters.rho, num_paths, n_points)?;
-
-        // 2. Map Gas (GBM)
-        GeometricBrownianMotionTransformer::transform_to_gbm(
-            forward_curve_gas,
-            model_parameters.sigma_g,
-            n_points,
-            eps.index_axis_mut(Axis(0), Self::IDX_GAS),
-        )?;
-
-        // 3. Map Power (OU Jump Diffusion)
-        JumpDiffusionProcessTransformer::transform_to_jdp(
-            forward_curve_power,
-            model_parameters.sigma_p,
-            model_parameters.kappa,
-            model_parameters.lambda_j,
-            model_parameters.mu_j,
-            model_parameters.sigma_j,
-            eps.index_axis_mut(Axis(0), Self::IDX_POWER),
-        )?;
-
-        Ok(SimulationResult::new(eps))
-    }
-
-    fn simulate_noise(rho: f64, num_paths: usize, num_points: usize) -> Result<Array3<f64>> {
-        let sigma = array![[1.0, rho], [rho, 1.0]];
+        // 1. Pre-calculate Cholesky for correlation
+        let sigma = array![[1.0, model_parameters.rho], [model_parameters.rho, 1.0]];
         let l = sigma.cholesky(UPLO::Lower)?;
-        let total_samples = num_paths * num_points;
-        let z = Array2::random((2, total_samples), StandardNormal);
-        let correlated_flat = l.dot(&z);
-        let mut correlated_3d = correlated_flat.into_shape((2, num_paths, num_points))?;
-        // Since Wiener Process starts at 0 at time 0 a.s.
-        correlated_3d.index_axis_mut(Axis(2), 0).fill(0.0);
-        Ok(correlated_3d)
+
+        // 2. Allocate output array (prices)
+        // Standard Layout: (num_paths, asset_idx, n_points)
+        let mut prices = Array3::<f64>::zeros((num_paths, 2, n_points));
+
+        // 3. Parallel simulation over paths
+        // We iterate over Axis(0) which is num_paths
+        prices.axis_iter_mut(Axis(0)).into_par_iter().for_each(|assets| {
+            let mut rng = thread_rng();
+            // Correlated noise: (2, n_points)
+            let z = Array2::random_using((2, n_points), StandardNormal, &mut rng);
+            let correlated = l.dot(&z);
+
+            // Split Asset axis: [Gas, Power]
+            let (mut gas_part, mut power_part) = assets.split_at(Axis(0), 1);
+            let mut gas_path = gas_part.index_axis_mut(Axis(0), 0);
+            let mut power_path = power_part.index_axis_mut(Axis(0), 0);
+            
+            // Assign noise to paths (re-using buffer)
+            gas_path.assign(&correlated.index_axis(Axis(0), 0));
+            power_path.assign(&correlated.index_axis(Axis(0), 1));
+
+            // Transform Gas Path (GBM)
+            GeometricBrownianMotionTransformer::transform_path_to_gbm(
+                forward_curve_gas,
+                model_parameters.sigma_g,
+                n_points,
+                gas_path.view_mut(),
+            );
+
+            // Transform Power Path (MRJD)
+            JumpDiffusionProcessTransformer::transform_path_to_jdp(
+                forward_curve_power,
+                model_parameters.sigma_p,
+                model_parameters.kappa,
+                model_parameters.lambda_j,
+                model_parameters.mu_j,
+                model_parameters.sigma_j,
+                power_path.view_mut(),
+                &mut rng,
+            );
+        });
+
+        Ok(SimulationResult::new(prices))
     }
 }

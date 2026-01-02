@@ -12,13 +12,14 @@ anyhow = "1.0.100"
 chrono = { version = "0.4.42", features = ["serde"] }
 clap = { version = "4.5.53", features = ["derive"] }
 csv = "1.4.0"
-ndarray = "0.15"
+ndarray = { version = "0.15", features = ["rayon"] }
 ndarray-linalg = { version = "0.16", features = ["openblas-system"] }
 ndarray-rand = "0.14"
 numpy = { version = "0.27.1", optional = true }
 pyo3 = { version = "0.27.2", features = ["extension-module"], optional = true }
 rand = "0.9.2"
 rand_distr = "0.5.1"
+rayon = "1.10.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.146"
 

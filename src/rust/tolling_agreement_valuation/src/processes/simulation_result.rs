@@ -8,7 +8,8 @@ use numpy::{IntoPyArray, PyArray};
 use pyo3::{Bound, Python};
 
 // Struct that wraps (and owns) the simulation result but provides lightweight methods
-// That return the fields for simulation
+// That return the fields for simulation.
+// Internal Layout: (num_paths, asset_idx, n_points)
 pub struct SimulationResult {
     data: Array3<f64>,
 }
@@ -19,16 +20,15 @@ impl SimulationResult {
     }
 
     pub fn gas_prices(&self) -> ArrayView2<'_, f64> {
-        self.data.index_axis(Axis(0), Simulator::IDX_GAS)
+        self.data.index_axis(Axis(1), Simulator::IDX_GAS)
     }
 
     pub fn power_prices(&self) -> ArrayView2<'_, f64> {
-        self.data.index_axis(Axis(0), Simulator::IDX_POWER)
+        self.data.index_axis(Axis(1), Simulator::IDX_POWER)
     }
 
-    // You can even add domain logic here
     pub fn num_paths(&self) -> usize {
-        self.data.len_of(Axis(1))
+        self.data.len_of(Axis(0))
     }
 
     pub fn num_points(&self) -> usize {

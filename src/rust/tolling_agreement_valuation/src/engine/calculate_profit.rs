@@ -1,67 +1,62 @@
 use crate::data::unit_parameters::UnitParameter;
 use crate::processes::simulation_result::SimulationResult;
 use anyhow::Result;
-use ndarray::{Array1, Array3, Axis, Zip};
+use ndarray::Array1;
+use rayon::prelude::*;
 
 pub struct ProfitCalculator;
 
 impl ProfitCalculator {
     pub fn calculate_profit(
         simulation_result: &SimulationResult,
-        unit_parameters: &Vec<UnitParameter>,
+        unit_parameters: &[UnitParameter],
         interest_rate: &f64,
     ) -> Result<f64> {
         let num_paths = simulation_result.num_paths();
         let num_hours = simulation_result.num_points();
-        let shape = (unit_parameters.len(), num_paths, num_hours);
-        let mut pi = Array3::<f64>::zeros(shape);
+        let n_days = num_hours / 24;
+
         let gas_prices = simulation_result.gas_prices();
         let power_prices = simulation_result.power_prices();
 
-        for (unit_idx, mut unit_slice) in pi.axis_iter_mut(Axis(0)).enumerate() {
-            let unit = &unit_parameters[unit_idx];
-            let hr = unit.heat_rate;
-            let cap = unit.capacity;
-
-            Zip::from(&mut unit_slice)
-                .and(&power_prices)
-                .and(&gas_prices)
-                .for_each(|out, &p, &g| {
-                    *out = (p - (hr * g)) * cap;
-                });
-        }
-
-        let n_days = num_hours / 24;
-        let n_units = unit_parameters.len();
-        // Reshape by day to calculate daily profits
-        let reshaped = pi
-            .into_shape((n_units, num_paths, n_days, 24))
-            .expect("Data layout must be contiguous for reshape");
-        // Sum over hours to get daily profits (shape: n_units, num_paths, n_days)
-        let mut daily_gross_profit = reshaped.sum_axis(Axis(3));
-
-        for (unit_idx, mut unit_slice) in daily_gross_profit.axis_iter_mut(Axis(0)).enumerate() {
-            let k_start = unit_parameters[unit_idx].start_up_costs;
-            // max(sum p_i - start, 0)
-            unit_slice.mapv_inplace(|val| {
-                let net = val - k_start;
-                if net > 0.0 { net } else { 0.0 }
-            });
-        }
-        // 1. Reduce [Units, Paths, Days] -> [Paths, Days]
-        // This is the correct first step (minimizes operations)
-        let path_daily_cashflows = daily_gross_profit.sum_axis(Axis(0));
-
-        // 2. Create Discount Vector [Days]
-        let discount_factors = Array1::from_shape_fn(n_days, |d| {
-            let t = (d as f64 + 1.0) / 365.0;
+        // 1. Pre-calculate discount factors (constant across paths)
+        let discount_factors = Array1::from_shape_fn(n_days, |day| {
+            let t = (day as f64 + 1.0) / 365.0;
             (-interest_rate * t).exp()
         });
 
-        let npv_per_path = path_daily_cashflows.dot(&discount_factors);
+        // 2. Calculate NPV per path in parallel
+        let total_npv: f64 = (0..num_paths)
+            .into_par_iter()
+            .map(|path_idx| {
+                let mut path_npv = 0.0;
+                
+                for day in 0..n_days {
+                    let mut daily_profit = 0.0;
+                    let df = discount_factors[day];
+                    let day_offset = day * 24;
 
-        // 4. Final Result
-        let profit = npv_per_path.mean().unwrap();
-        Ok(profit)
+                    for unit in unit_parameters {
+                        let mut unit_day_gross = 0.0;
+                        for hour_of_day in 0..24 {
+                            let h = day_offset + hour_of_day;
+                            // Cache-friendly access: path is fixed, hour varies
+                            let p = power_prices[[path_idx, h]];
+                            let g = gas_prices[[path_idx, h]];
+                            unit_day_gross += (p - (unit.heat_rate * g)) * unit.capacity;
+                        }
+                        
+                        let unit_day_net = unit_day_gross - unit.start_up_costs;
+                        if unit_day_net > 0.0 {
+                            daily_profit += unit_day_net;
+                        }
+                    }
+                    path_npv += daily_profit * df;
+                }
+                path_npv
+            })
+            .sum();
+
+        Ok(total_npv / (num_paths as f64))
     }
 }
