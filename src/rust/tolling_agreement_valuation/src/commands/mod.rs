@@ -1,2 +1,2 @@
 pub mod calculate_profit;
-pub mod sample_prices;
+pub mod sample_paths;

@@ -5,6 +5,7 @@
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{tcolorbox}
+\usepackage{enumitem}
 
 \geometry{a4paper, margin=1in}
 
@@ -27,24 +28,43 @@ with path dependency induced by start-up costs and unit-level dispatch constrain
 % =====================================================
 \section{Market Characteristics}
 
-\begin{itemize}
-    \item \textbf{Natural Gas ($G_t$):} Storable commodity; forward curve derived from traded instruments.
-    \item \textbf{Electricity ($P_t$):} Non-storable commodity; forward curve is primitive.
-\end{itemize}
+The valuation relies on two underlying commodities with distinct physical properties:
 
-The power spot price is defined consistently as:
+\begin{description}
+    \item[Natural Gas ($G_t$):] A storable commodity. Its price dynamics are driven by storage levels, supply/demand, and weather. The forward curve is derived from liquidly traded instruments.
+    \item[Electricity ($P_t$):] A non-storable commodity (flow). Since it cannot be economically stored in large quantities, prices must clear the market instantaneously, leading to high volatility and spikes.
+\end{description}
+
+The \textbf{Power Spot Price} ($S_t$) represents the price for immediate delivery. In an arbitrage-free framework, the spot price is the limit of the forward price as time to maturity approaches zero:
 \[
-S_t := F_P(t,t).
+S_t := F_P(t,t) = \lim_{T \to t} F_P(t, T).
 \]
 
 % =====================================================
 \section{Risk-Neutral Measure and No-Arbitrage}
 
-All valuation is performed under the risk-neutral measure $\mathbb Q$.
-No-arbitrage requires that traded forward prices are martingales.
+All valuation is performed under the risk-neutral measure $\mathbb Q$. 
+
+\subsection{The Martingale Condition: Aligning with the Market}
+
+The fundamental requirement of "No-Arbitrage" is that the model must be consistent with the current market prices of liquid assets (Forward contracts). Mathematically, this requires that the discounted asset prices are \textbf{martingales}.
+
+In practical terms, this means the \textbf{expected value} of the future spot price in our model must exactly equal the current market \textbf{forward price}:
+\[
+\mathbb E^{\mathbb Q}[\text{Spot}_t] = \text{Forward}(0,t)
+\]
+
+\textbf{Why is this necessary?}
+\begin{itemize}
+    \item The Forward curve represents the market's consensus on fair value for future delivery.
+    \item If our model predicted an average future spot price of \$50 while the market forward was trading at \$40, it would imply a "free lunch" (arbitrage) exists: one could buy the forward at \$40 and statistically expect to sell it at \$50.
+    \item To prevent this, we mathematically "force" (calibrate) the drift of our Gas and Power simulations so they center exactly on the forward curves.
+\end{itemize}
 
 % -----------------------------------------------------
 \subsection{Natural Gas Dynamics under $\mathbb Q$}
+
+To satisfy the condition $\mathbb E^{\mathbb Q}[G_t] = F_G(0,t)$, we define the dynamics as:
 
 \begin{equation}
 dG_t = \mu_{\mathrm{fwd}}(t) G_t dt + \sigma_g G_t dW_t^{\mathbb Q,g},
@@ -52,24 +72,22 @@ dG_t = \mu_{\mathrm{fwd}}(t) G_t dt + \sigma_g G_t dW_t^{\mathbb Q,g},
 \mu_{\mathrm{fwd}}(t) = \frac{\partial}{\partial t} \ln F_G(0,t)
 \end{equation}
 
-Ensuring:
-\[
-\mathbb E^{\mathbb Q}[G_t] = F_G(0,t).
-\]
-This gives us:
+This results in the solution:
 \begin{equation}
-    G_{t} = F(0, t) \exp(-\frac{1}{2} \sigma_{g}^{2} t + \sigma_{g} W_t^{\mathbb Q,g})
+    G_{t} = F_G(0, t) \exp\left(-\frac{1}{2} \sigma_{g}^{2} t + \sigma_{g} W_t^{\mathbb Q,g}\right)
 \end{equation}
+Notice that $F_G(0,t)$ appears explicitly in the equation, ensuring the model is anchored to the market curve.
+
 % -----------------------------------------------------
 \subsection{Power Dynamics under $\mathbb Q$ (MRJD with Compensation)}
 
-The power price is modeled as:
+Similarly for power, we require $\mathbb E^{\mathbb Q}[P_t] = F_P(0,t)$. The price is modeled as the Forward curve multiplied by a stochastic factor:
 \begin{equation}
 P_t = F_P(0,t)\exp(X_t),
 \qquad X_0 = 0
 \end{equation}
 
-where the stochastic factor $X_t$ follows:
+The stochastic factor $X_t$ (Mean-Reverting Jump Diffusion) is defined as:
 \begin{equation}
 \boxed{
 \begin{aligned}
@@ -81,22 +99,8 @@ dX_t = {} & -\kappa X_t dt
 }
 \end{equation}
 
-with:
-\begin{itemize}
-    \item $N_t$: Poisson process with intensity $\lambda$
-    \item $J \sim \mathcal N(\mu_J, \sigma_J^2)$
-    \item $\mathbb E[e^{J}] = \exp(\mu_{J} + \frac{1}{2} \sigma_{J}^{2})$
-\end{itemize}
-
-Since:
-\[
-\mathbb E[e^{J}] = \exp\left(\mu_J + \tfrac12\sigma_J^2\right),
-\]
-the compensator ensures:
-\[
-\mathbb E^{\mathbb Q}[P_t] = F_P(0,t),
-\]
-thus preserving no-arbitrage.
+\textbf{The Compensator Term:}
+The last term, $- \lambda(\mathbb E[e^{J}] - 1)dt$, is a "correction" drift. It counteracts the upward pressure caused by the jumps ($J$), ensuring that the expected value of the stochastic factor $X_t$ remains neutral ($\mathbb E[e^{X_t}]=1$). Without this, the presence of price spikes would artificially inflate the model's average price above the forward curve.
 
 % -----------------------------------------------------
 \subsection{Correlation Structure}
@@ -108,24 +112,21 @@ dW_t^{\mathbb Q,g} \, dW_t^{\mathbb Q,p} = \rho \, dt
 % =====================================================
 \section{Physical Measure ($\mathbb P$)}
 
-The physical measure describes real-world price evolution and is used for risk management.
+The physical measure describes real-world price evolution and is used for risk management (e.g., VaR). It differs from $\mathbb Q$ because it includes the risk premium.
 
 \subsection{Gas}
-
 \begin{equation}
 dG_t = \mu_{\mathrm{real}} G_t dt + \sigma_g G_t dW_t^{\mathbb P,g}
 \end{equation}
 
 \subsection{Power}
-
 \begin{equation}
 d(\ln P_t) =
 \kappa(\theta_{\mathrm{LRMC}}(t) - \ln P_t)dt
 + \sigma_p dW_t^{\mathbb P,p}
 + J dN_t^{\mathbb P}
 \end{equation}
-
-Jump intensities and diffusion drifts may differ between $\mathbb P$ and $\mathbb Q$.
+Under $\mathbb P$, prices revert to the \textbf{Long Run Marginal Cost (LRMC)}, not the Forward curve.
 
 % =====================================================
 \section{Plant Representation: Multiple Units}
@@ -142,25 +143,32 @@ $i$ & HR$_i$ & Cap$_i$ & $K_{\mathrm{start},i}$ \\
 \end{tabular}
 \end{center}
 
+\begin{description}
+    \item[Heat Rate ($\mathrm{HR}_i$):] Efficiency (MMBtu/MWh). Lower is better.
+    \item[Capacity ($\mathrm{Cap}_i$):] Max output (MW).
+    \item[Start Cost ($K_{\mathrm{start},i}$):] Cost to turn the unit on (EUR).
+\end{description}
+
 % =====================================================
 \section{Spark Spread Payoff}
 
-For unit $i$ at hour $h$:
+The \textbf{Spark Spread} is the gross margin of the plant. For unit $i$ at hour $h$:
 
 \begin{equation}
 \pi_{h,i}
 =
-\left(
+\underbrace{\left(
 P_{t_h}
 -
 \mathrm{HR}_i G_{t_h}
-\right)\cdot \mathrm{Cap}_i
+\right)}_{\text{Unit Margin}}
+\cdot \mathrm{Cap}_i
 \end{equation}
-
+The Unit Margin (€) gives us the difference between what we spend per MwH and what we earn per MwH so it is the profit/loss for this unit at hour h.
 % =====================================================
 \section{Optimal Dispatch Problem}
 
-Daily dispatch is obtained by:
+The operator maximizes daily profit against start costs:
 
 \begin{equation}
 \text{Daily Value}_D =
@@ -173,8 +181,8 @@ K_{\mathrm{start},i}, 0
 \right\}
 \end{equation}
 
-A merit-order heuristic is applied for tractability.
-
+This formula ensures that we start a unit whenever it is profitable to start it against the startup costs. 
+This also means that we run the unit all day when it is expected to be profitable even when there are hours where we sell with a loss.
 % =====================================================
 \section{Tolling Agreement Valuation}
 
@@ -190,10 +198,10 @@ e^{-rT_D}
 
 \begin{tcolorbox}
 \begin{enumerate}
-    \item Simulate correlated $(G_t,X_t)$ paths under $\mathbb Q$.
+    \item Simulate correlated $(G_t,X_t)$ paths under $\mathbb Q$, ensuring expected values match forwards.
     \item Construct $P_t = F_P(0,t)e^{X_t}$.
-    \item Compute hourly spark spreads for each unit.
-    \item Apply dispatch and start logic.
+    \item Compute hourly spark spreads $\pi_{h,i}$.
+    \item Apply dispatch and start logic (Real Option).
     \item Average discounted cashflows.
 \end{enumerate}
 \end{tcolorbox}

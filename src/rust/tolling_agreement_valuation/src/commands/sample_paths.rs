@@ -1,7 +1,8 @@
-use crate::commands::args::SamplePathsArgs;
+use crate::data::model_parameters::ModelParameters;
 use crate::processes::simulate_prices::Simulator;
 use crate::processes::simulation_result::SimulationResult;
 use anyhow::Result;
+use ndarray::Array1;
 
 pub struct SamplePricesCommand;
 
@@ -17,4 +18,11 @@ impl SamplePricesCommand {
 
         Ok(prices)
     }
+}
+
+pub struct SamplePathsArgs {
+    pub gas_curve: Array1<f64>,
+    pub power_curve: Array1<f64>,
+    pub model_params: ModelParameters,
+    pub num_paths: usize,
 }

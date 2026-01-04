@@ -1,8 +1,10 @@
-use crate::data_reader::json_reader::JsonFileReader;
-use anyhow::Result;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 pub struct UnitParameter {
     // How many MwH can we generate from one BBTU (MwH / BBTU)
     pub heat_rate: f64,
@@ -12,9 +14,15 @@ pub struct UnitParameter {
     pub start_up_costs: f64,
 }
 
+#[cfg(feature = "python")]
+#[pymethods]
 impl UnitParameter {
-    // Read a list of unit parameters for one facility
-    pub fn from_json_file(path: &str) -> Result<Vec<Self>> {
-        JsonFileReader::read(path)
+    #[new]
+    pub fn new(heat_rate: f64, capacity: f64, start_up_costs: f64) -> Self {
+        UnitParameter {
+            heat_rate,
+            capacity,
+            start_up_costs,
+        }
     }
 }

@@ -1,8 +1,10 @@
-use crate::data_reader::json_reader::JsonFileReader;
-use anyhow::Result;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 pub struct ModelParameters {
     // Volatility of gas price (in percent)
     pub sigma_g: f64,
@@ -22,8 +24,30 @@ pub struct ModelParameters {
     pub r: f64,
 }
 
+#[cfg(feature = "python")]
+#[pymethods]
 impl ModelParameters {
-    pub fn from_json_file(path: &str) -> Result<Self> {
-        JsonFileReader::read(path)
+    #[new]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        sigma_g: f64,
+        sigma_p: f64,
+        kappa: f64,
+        lambda_j: f64,
+        mu_j: f64,
+        sigma_j: f64,
+        rho: f64,
+        r: f64,
+    ) -> Self {
+        ModelParameters {
+            sigma_g,
+            sigma_p,
+            kappa,
+            lambda_j,
+            mu_j,
+            sigma_j,
+            rho,
+            r,
+        }
     }
 }
