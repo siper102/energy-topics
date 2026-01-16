@@ -2,17 +2,18 @@ use crate::core::parameters::UnitParameter;
 use crate::core::simulator::simulate_prices::TollingAssetIndex;
 use crate::core::simulator::simulation_result::SimulationResult;
 use anyhow::Result;
-use ndarray::Array1;
+use ndarray::Array2;
 use rayon::prelude::*;
 
 pub struct ProfitCalculator;
 
 impl ProfitCalculator {
-    pub fn calculate_profit(
+    /// Calculate daily profits for each simulation path
+    /// Returns a (num_paths, num_days) matrix of non-discounted daily profits
+    pub fn calculate_daily_profits(
         simulation_result: &SimulationResult,
         unit_parameters: &[UnitParameter],
-        interest_rate: &f64,
-    ) -> Result<f64> {
+    ) -> Result<Array2<f64>> {
         let num_paths = simulation_result.num_paths();
         let num_hours = simulation_result.num_points();
         let n_days = num_hours / 24;
@@ -20,21 +21,14 @@ impl ProfitCalculator {
         let gas_prices = simulation_result.get_asset_data(TollingAssetIndex::Gas.idx());
         let power_prices = simulation_result.get_asset_data(TollingAssetIndex::Power.idx());
 
-        // 1. Pre-calculate discount factors (constant across paths)
-        let discount_factors = Array1::from_shape_fn(n_days, |day| {
-            let t = (day as f64 + 1.0) / 365.0;
-            (-interest_rate * t).exp()
-        });
-
-        // 2. Calculate NPV per path in parallel
-        let total_npv: f64 = (0..num_paths)
+        // Calculate daily profits per path in parallel
+        let daily_profits: Vec<f64> = (0..num_paths)
             .into_par_iter()
-            .map(|path_idx| {
-                let mut path_npv = 0.0;
+            .flat_map(|path_idx| {
+                let mut path_daily_profits = Vec::with_capacity(n_days);
 
                 for day in 0..n_days {
                     let mut daily_profit = 0.0;
-                    let df = discount_factors[day];
                     let day_offset = day * 24;
 
                     for unit in unit_parameters {
@@ -52,12 +46,14 @@ impl ProfitCalculator {
                             daily_profit += unit_day_net;
                         }
                     }
-                    path_npv += daily_profit * df;
+                    path_daily_profits.push(daily_profit);
                 }
-                path_npv
+                path_daily_profits
             })
-            .sum();
+            .collect();
 
-        Ok(total_npv / (num_paths as f64))
+        // Convert to Array2 with shape (num_paths, n_days)
+        Array2::from_shape_vec((num_paths, n_days), daily_profits)
+            .map_err(|e| anyhow::anyhow!("Failed to reshape daily profits: {}", e))
     }
 }

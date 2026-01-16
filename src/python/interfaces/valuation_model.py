@@ -27,12 +27,15 @@ class ValuationModel(ABC):
         pass
 
     @abstractmethod
-    def calculate_npv(self, num_paths: int = 10000) -> float:
+    def calculate_daily_profits(self, num_paths: int = 10000) -> np.ndarray:
         """
-        Calculate the Net Present Value (NPV) of the asset.
+        Calculate daily profits for each simulation path.
         
         Args:
-            num_paths: Number of Monte Carlo paths (if applicable).
+            num_paths: Number of Monte Carlo paths.
+            
+        Returns:
+            np.ndarray: Array of shape (num_paths, num_days) with non-discounted daily profits.
         """
         pass
 

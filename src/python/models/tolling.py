@@ -39,9 +39,15 @@ class TollingModel(ValuationModel):
         self.gas_curve = np.ascontiguousarray(curves['gas']['price'].values, dtype=np.float64)
         self.power_curve = np.ascontiguousarray(curves['power']['price'].values, dtype=np.float64)
 
-    def calculate_npv(self, num_paths: int = 10000) -> float:
+    def calculate_daily_profits(self, num_paths: int = 10000) -> np.ndarray:
+        """
+        Calculate daily profits for each simulation path.
+        
+        Returns:
+            np.ndarray: A (num_paths, num_days) matrix of non-discounted daily profits
+        """
         self._validate_inputs()
-        return tolling_agreement_valuation.calculate_profit(
+        return tolling_agreement_valuation.calculate_daily_profits(
             self.gas_curve,
             self.power_curve,
             self.model_params,
