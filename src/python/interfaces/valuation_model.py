@@ -27,17 +27,19 @@ class ValuationModel(ABC):
         pass
 
     @abstractmethod
-    def calculate_daily_profits(self, num_paths: int = 10000) -> np.ndarray:
+    def calculate_daily_profits(self, num_paths: int = 10000, risk_free_rate: float = 0.0) -> np.ndarray:
         """
         Calculate daily profits for each simulation path.
-        
-        Args:
-            num_paths: Number of Monte Carlo paths.
-            
-        Returns:
-            np.ndarray: Array of shape (num_paths, num_days) with non-discounted daily profits.
         """
         pass
+
+    @abstractmethod
+    def calculate_greeks(self, num_paths: int = 10000, risk_free_rate: float = 0.0) -> Any:
+        """
+        Calculate Greeks (sensitivities) using AAD.
+        """
+        pass
+
 
     @abstractmethod
     def get_sample_paths(self, num_paths: int = 100) -> Optional[np.ndarray]:

@@ -1,6 +1,5 @@
-use crate::core::parameters::UnitParameter;
 use crate::core::services::calculate_profit::{calculate_daily_profits, CalculateProfitArgs};
-use crate::python::parameters::PyModelParameters;
+use crate::python::parameters::{PyModelParameters, PyUnitParameter};
 use numpy::{IntoPyArray, PyArray2, PyReadonlyArray1};
 use pyo3::{pyfunction, Bound, PyErr, PyResult, Python};
 
@@ -14,15 +13,17 @@ pub fn calculate_daily_profits_py<'py>(
     gas_curve: PyReadonlyArray1<f64>,
     power_curve: PyReadonlyArray1<f64>,
     model_params: PyModelParameters,
-    unit_params: Vec<UnitParameter>,
+    unit_params: Vec<PyUnitParameter>,
     num_paths: usize,
+    risk_free_rate: f64,
 ) -> PyResult<Bound<'py, PyArray2<f64>>> {
     let args = CalculateProfitArgs {
         gas_curve: gas_curve.as_array().to_owned(),
         power_curve: power_curve.as_array().to_owned(),
         model_params: model_params.to_domain(),
-        unit_params,
+        unit_params: unit_params.iter().map(|p| p.to_domain()).collect(),
         num_paths,
+        risk_free_rate,
     };
 
     let result = calculate_daily_profits(args)

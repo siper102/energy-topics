@@ -16,8 +16,6 @@ pub struct ModelParameters<T> {
     pub sigma_j: T,
     // correlation of gas- and power prices (€ / mwh^2)
     pub rho: T,
-    // Risk-free interest
-    pub r: T,
 }
 
 impl<T> ModelParameters<T> {
@@ -30,7 +28,6 @@ impl<T> ModelParameters<T> {
         mu_j: T,
         sigma_j: T,
         rho: T,
-        r: T,
     ) -> Self {
         ModelParameters {
             sigma_g,
@@ -40,7 +37,6 @@ impl<T> ModelParameters<T> {
             mu_j,
             sigma_j,
             rho,
-            r,
         }
     }
 }

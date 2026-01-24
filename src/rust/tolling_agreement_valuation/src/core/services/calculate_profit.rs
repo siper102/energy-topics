@@ -17,7 +17,11 @@ pub fn calculate_daily_profits(args: CalculateProfitArgs) -> Result<Array2<f64>>
     )?;
 
     // 2. Calculate Daily Profits
-    let daily_profits = ProfitCalculator::calculate_daily_profits(&prices, &args.unit_params)?;
+    let daily_profits = ProfitCalculator::calculate_daily_profits(
+        &prices,
+        &args.unit_params,
+        args.risk_free_rate,
+    )?;
 
     Ok(daily_profits)
 }
@@ -26,6 +30,7 @@ pub struct CalculateProfitArgs {
     pub gas_curve: Array1<f64>,
     pub power_curve: Array1<f64>,
     pub model_params: ModelParameters<f64>,
-    pub unit_params: Vec<UnitParameter>,
+    pub unit_params: Vec<UnitParameter<f64>>,
     pub num_paths: usize,
+    pub risk_free_rate: f64,
 }

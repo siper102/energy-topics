@@ -39,12 +39,12 @@ class TollingModel(ValuationModel):
         self.gas_curve = np.ascontiguousarray(curves['gas']['price'].values, dtype=np.float64)
         self.power_curve = np.ascontiguousarray(curves['power']['price'].values, dtype=np.float64)
 
-    def calculate_daily_profits(self, num_paths: int = 10000) -> np.ndarray:
+    def calculate_daily_profits(self, num_paths: int = 10000, risk_free_rate: float = 0.0) -> np.ndarray:
         """
         Calculate daily profits for each simulation path.
         
         Returns:
-            np.ndarray: A (num_paths, num_days) matrix of non-discounted daily profits
+            np.ndarray: A (num_paths, num_days) matrix of discounted daily profits
         """
         self._validate_inputs()
         return tolling_agreement_valuation.calculate_daily_profits(
@@ -52,7 +52,8 @@ class TollingModel(ValuationModel):
             self.power_curve,
             self.model_params,
             self.unit_params,
-            num_paths
+            num_paths,
+            risk_free_rate
         )
 
     def get_sample_paths(self, num_paths: int = 100) -> Optional[np.ndarray]:
@@ -65,6 +66,23 @@ class TollingModel(ValuationModel):
             self.power_curve,
             self.model_params,
             num_paths
+        )
+
+    def calculate_greeks(self, num_paths: int = 10000, risk_free_rate: float = 0.0) -> Any:
+        """
+        Calculate Greeks (sensitivities) using AAD.
+        
+        Returns:
+            GreeksResult object containing delta_gas, delta_power, vega_gas, vega_power.
+        """
+        self._validate_inputs()
+        return tolling_agreement_valuation.calculate_greeks(
+            self.gas_curve,
+            self.power_curve,
+            self.model_params,
+            self.unit_params,
+            num_paths,
+            risk_free_rate
         )
 
     def _validate_inputs(self):
