@@ -1,43 +1,36 @@
 use serde::Deserialize;
 
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
 #[derive(Debug, Deserialize, Clone)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-pub struct ModelParameters {
+pub struct ModelParameters<T> {
     // Volatility of gas price (in percent)
-    pub sigma_g: f64,
+    pub sigma_g: T,
     // Volatility of power price (in percent)
-    pub sigma_p: f64,
+    pub sigma_p: T,
     // mean reversion speed (unitless)
-    pub kappa: f64,
+    pub kappa: T,
     // number of jumps per day (jumps / day)
-    pub lambda_j: f64,
+    pub lambda_j: T,
     // mean jump height of power price (€ / mwh)
-    pub mu_j: f64,
+    pub mu_j: T,
     // variance of jump height (€ / mwh)
-    pub sigma_j: f64,
+    pub sigma_j: T,
     // correlation of gas- and power prices (€ / mwh^2)
-    pub rho: f64,
+    pub rho: T,
     // Risk-free interest
-    pub r: f64,
+    pub r: T,
 }
 
-#[cfg(feature = "python")]
-#[pymethods]
-impl ModelParameters {
-    #[new]
+impl<T> ModelParameters<T> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        sigma_g: f64,
-        sigma_p: f64,
-        kappa: f64,
-        lambda_j: f64,
-        mu_j: f64,
-        sigma_j: f64,
-        rho: f64,
-        r: f64,
+        sigma_g: T,
+        sigma_p: T,
+        kappa: T,
+        lambda_j: T,
+        mu_j: T,
+        sigma_j: T,
+        rho: T,
+        r: T,
     ) -> Self {
         ModelParameters {
             sigma_g,

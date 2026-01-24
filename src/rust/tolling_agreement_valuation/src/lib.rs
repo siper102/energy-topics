@@ -1,5 +1,5 @@
 #[cfg(feature = "python")]
-use crate::core::parameters::ModelParameters;
+use crate::python::parameters::PyModelParameters;
 #[cfg(feature = "python")]
 use crate::core::parameters::UnitParameter;
 #[cfg(feature = "python")]
@@ -11,6 +11,7 @@ use pyo3::prelude::*;
 
 // This exposes the modules to the library so they are compiled in
 mod core;
+#[cfg(feature = "python")]
 pub mod python;
 
 #[cfg(feature = "python")]
@@ -18,7 +19,7 @@ pub mod python;
 fn tolling_agreement_valuation(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calculate_daily_profits_py, m)?)?;
     m.add_function(wrap_pyfunction!(sample_prices_py, m)?)?;
-    m.add_class::<ModelParameters>()?;
+    m.add_class::<PyModelParameters>()?;
     m.add_class::<UnitParameter>()?;
     Ok(())
 }

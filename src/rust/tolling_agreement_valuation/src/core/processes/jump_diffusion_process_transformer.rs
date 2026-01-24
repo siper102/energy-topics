@@ -2,6 +2,7 @@ use ndarray::{Array1, ArrayViewMut1};
 use ndarray_rand::rand::prelude::ThreadRng;
 use ndarray_rand::rand::Rng;
 use ndarray_rand::rand_distr::{Distribution, Poisson, StandardNormal};
+use num_traits::{Float, FromPrimitive};
 
 // Struct that provides functions to transform pure gaussian noise to a Mean-Reverting Jump Diffusion (MRJD).
 // It samples from the process: X_{t} = F(t) * \exp(V_{t})
@@ -12,21 +13,21 @@ pub struct JumpDiffusionProcessTransformer;
 
 impl JumpDiffusionProcessTransformer {
     #[inline(always)]
-    pub fn transform_path_to_ou(
-        sigma_p: f64,
-        kappa: f64,
-        mu_j: f64,
-        sigma_j: f64,
-        dt: f64,
-        dt_sqrt: f64,
-        jump_drift_correction: f64,
+    pub fn transform_path_to_ou<T: Float + FromPrimitive>(
+        sigma_p: T,
+        kappa: T,
+        mu_j: T,
+        sigma_j: T,
+        dt: T,
+        dt_sqrt: T,
+        jump_drift_correction: T,
         poisson_dist: &Poisson<f64>,
-        mut path: ArrayViewMut1<f64>,
+        mut path: ArrayViewMut1<T>,
         rng: &mut ThreadRng,
     ) {
         let n_points = path.len();
         // Weiner process starts at 0 at time 0.
-        path[0] = 0.0;
+        path[0] = T::zero();
         for t in 1..n_points {
             let p = path[t - 1];
             let dw = path[t] * dt_sqrt;
@@ -37,21 +38,28 @@ impl JumpDiffusionProcessTransformer {
     }
 
     #[inline(always)]
-    pub fn transform_path_to_jdp(
-        f: &Array1<f64>,
-        sigma_p: f64,
-        kappa: f64,
-        lambda_j: f64,
-        mu_j: f64,
-        sigma_j: f64,
-        mut path: ArrayViewMut1<f64>,
+    pub fn transform_path_to_jdp<T: Float + FromPrimitive>(
+        f: &Array1<T>,
+        sigma_p: T,
+        kappa: T,
+        lambda_j: T,
+        mu_j: T,
+        sigma_j: T,
+        mut path: ArrayViewMut1<T>,
         rng: &mut ThreadRng,
     ) {
         let n_points = path.len();
-        let dt = 1.0 / n_points as f64;
+        let dt_val = 1.0 / n_points as f64;
+        let dt = T::from_f64(dt_val).unwrap();
         let dt_sqrt = dt.sqrt();
-        let jump_drift_correction = lambda_j * dt * ((mu_j + 0.5 * sigma_j.powi(2)).exp() - 1.0);
-        let poisson_dist = Poisson::new(lambda_j * dt).unwrap();
+        
+        let half = T::from_f64(0.5).unwrap();
+        let drift_term = (mu_j + half * sigma_j.powi(2)).exp() - T::one();
+        let jump_drift_correction = lambda_j * dt * drift_term;
+        
+        // Poisson parameter must be f64. Using to_f64() implies we treat lambda as constant for RNG intensity.
+        let lambda_f64 = lambda_j.to_f64().unwrap();
+        let poisson_dist = Poisson::new(lambda_f64 * dt_val).unwrap();
 
         Self::transform_path_to_ou(
             sigma_p,
@@ -73,14 +81,17 @@ impl JumpDiffusionProcessTransformer {
     }
 
     #[inline(always)]
-    fn sample_jump(rng: &mut ThreadRng, poisson: &Poisson<f64>, mu: f64, sigma: f64) -> f64 {
+    fn sample_jump<T: Float + FromPrimitive>(rng: &mut ThreadRng, poisson: &Poisson<f64>, mu: T, sigma: T) -> T {
         let n_jumps = poisson.sample(rng);
 
         if n_jumps > 0.0 {
+            let n_jumps_t = T::from_f64(n_jumps).unwrap();
             let z: f64 = rng.sample(StandardNormal);
-            (mu * n_jumps) + (z * (sigma * n_jumps.sqrt()))
+            let z_t = T::from_f64(z).unwrap();
+            
+            (mu * n_jumps_t) + (z_t * (sigma * n_jumps_t.sqrt()))
         } else {
-            0.0
+            T::zero()
         }
     }
 }

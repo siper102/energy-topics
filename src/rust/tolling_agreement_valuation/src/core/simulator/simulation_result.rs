@@ -9,16 +9,16 @@ use pyo3::{Bound, Python};
 // Struct that wraps (and owns) the simulation result but provides lightweight methods
 // That return the fields for simulation.
 // Internal Layout: (num_paths, asset_idx, n_points)
-pub struct SimulationResult {
-    data: Array3<f64>,
+pub struct SimulationResult<T> {
+    data: Array3<T>,
 }
 
-impl SimulationResult {
-    pub fn new(data: Array3<f64>) -> Self {
+impl<T> SimulationResult<T> {
+    pub fn new(data: Array3<T>) -> Self {
         Self { data }
     }
 
-    pub fn get_asset_data(&self, asset_idx: usize) -> ArrayView2<'_, f64> {
+    pub fn get_asset_data(&self, asset_idx: usize) -> ArrayView2<'_, T> {
         self.data.index_axis(Axis(1), asset_idx)
     }
 
@@ -29,8 +29,10 @@ impl SimulationResult {
     pub fn num_points(&self) -> usize {
         self.data.len_of(Axis(2))
     }
+}
 
-    #[cfg(feature = "python")]
+#[cfg(feature = "python")]
+impl SimulationResult<f64> {
     pub fn into_pyarray(self, py: Python) -> Bound<PyArray<f64, Ix3>> {
         self.data.into_pyarray(py)
     }

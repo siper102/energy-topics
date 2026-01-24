@@ -4,9 +4,8 @@ use crate::core::processes::jump_diffusion_process_transformer::JumpDiffusionPro
 use crate::core::simulator::simulation_result::SimulationResult;
 use anyhow::Result;
 use ndarray::{array, Array1, Array2, Array3, Axis};
-use ndarray_linalg::cholesky::Cholesky;
-use ndarray_linalg::UPLO;
 use ndarray_rand::rand::thread_rng;
+use ndarray_rand::rand_distr::num_traits::{Float, FromPrimitive};
 use ndarray_rand::rand_distr::StandardNormal;
 use ndarray_rand::RandomExt;
 use rayon::prelude::*;
@@ -27,22 +26,26 @@ impl TollingAssetIndex {
 pub struct Simulator;
 
 impl Simulator {
-    pub fn simulate(
-        forward_curve_gas: &Array1<f64>,
-        forward_curve_power: &Array1<f64>,
-        model_parameters: &ModelParameters,
+    pub fn simulate<T: Float + FromPrimitive + Send + Sync + 'static>(
+        forward_curve_gas: &Array1<T>,
+        forward_curve_power: &Array1<T>,
+        model_parameters: &ModelParameters<T>,
         num_paths: usize,
-    ) -> Result<SimulationResult> {
+    ) -> Result<SimulationResult<T>> {
         let n_points = forward_curve_gas.len();
         let n_assets = 2;
 
         // 1. Pre-calculate Cholesky for correlation
-        let sigma = array![[1.0, model_parameters.rho], [model_parameters.rho, 1.0]];
-        let l = sigma.cholesky(UPLO::Lower)?;
+        let rho = model_parameters.rho;
+        let one = T::one();
+        let zero = T::zero();
+        let correlation_term = (one - rho * rho).sqrt();
+
+        let l = array![[one, zero], [rho, correlation_term]];
 
         // 2. Allocate output array (prices)
         // Standard Layout: (num_paths, asset_idx, n_points)
-        let mut prices = Array3::<f64>::zeros((num_paths, n_assets, n_points));
+        let mut prices = Array3::<T>::zeros((num_paths, n_assets, n_points));
 
         // 3. Parallel simulation over paths
         // We iterate over Axis(0) which is num_paths
@@ -52,7 +55,11 @@ impl Simulator {
             .for_each(|assets| {
                 let mut rng = thread_rng();
                 // Correlated noise: (2, n_points)
-                let z = Array2::random_using((2, n_points), StandardNormal, &mut rng);
+                // Random numbers are always f64 (source of randomness)
+                let z_f64 = Array2::random_using((2, n_points), StandardNormal, &mut rng);
+                // Convert to T for matrix multiplication
+                let z = z_f64.mapv(|x| T::from_f64(x).unwrap());
+                
                 let correlated = l.dot(&z);
 
                 // Split Asset axis: [Gas, Power]

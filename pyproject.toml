@@ -21,3 +21,8 @@ members = [
 
 [tool.uv.sources]
 tolling-agreement-valuation = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "maturin>=1.11.5",
+]

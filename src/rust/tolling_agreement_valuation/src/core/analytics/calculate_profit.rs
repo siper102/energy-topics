@@ -11,7 +11,7 @@ impl ProfitCalculator {
     /// Calculate daily profits for each simulation path
     /// Returns a (num_paths, num_days) matrix of non-discounted daily profits
     pub fn calculate_daily_profits(
-        simulation_result: &SimulationResult,
+        simulation_result: &SimulationResult<f64>,
         unit_parameters: &[UnitParameter],
     ) -> Result<Array2<f64>> {
         let num_paths = simulation_result.num_paths();

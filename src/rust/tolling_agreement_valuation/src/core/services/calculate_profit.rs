@@ -25,7 +25,7 @@ pub fn calculate_daily_profits(args: CalculateProfitArgs) -> Result<Array2<f64>>
 pub struct CalculateProfitArgs {
     pub gas_curve: Array1<f64>,
     pub power_curve: Array1<f64>,
-    pub model_params: ModelParameters,
+    pub model_params: ModelParameters<f64>,
     pub unit_params: Vec<UnitParameter>,
     pub num_paths: usize,
 }

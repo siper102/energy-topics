@@ -1,5 +1,5 @@
-use crate::core::parameters::ModelParameters;
 use crate::core::services::sample_paths::{sample_paths, SamplePathsArgs};
+use crate::python::parameters::PyModelParameters;
 use numpy::{PyArray3, PyReadonlyArray1};
 use pyo3::{pyfunction, Bound, PyErr, PyResult, Python};
 
@@ -11,14 +11,14 @@ pub fn sample_prices_py<'py>(
     py: Python<'py>,
     gas_curve: PyReadonlyArray1<f64>,
     power_curve: PyReadonlyArray1<f64>,
-    model_params: ModelParameters,
+    model_params: PyModelParameters,
     num_paths: usize,
 ) -> PyResult<Bound<'py, PyArray3<f64>>> {
     // 1. Convert Python args to your Rust Struct
     let args = SamplePathsArgs {
         gas_curve: gas_curve.as_array().to_owned(),
         power_curve: power_curve.as_array().to_owned(),
-        model_params,
+        model_params: model_params.to_domain(),
         num_paths,
     };
 
