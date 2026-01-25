@@ -1,3 +1,10 @@
+//! # DEPRECATED: This module is no longer used and is a candidate for removal.
+//!
+//! The `calculate_daily_profits` service has been superseded by the more direct
+//! `ProfitCalculator::calculate_daily_profits` method, which is called from the
+//! `valuation_tutorial.ipynb` notebook. This file remains for historical purposes
+//! but should be deleted.
+
 use crate::core::services::calculate_profit::{calculate_daily_profits, CalculateProfitArgs};
 use crate::python::parameters::{PyModelParameters, PyUnitParameter};
 use numpy::{IntoPyArray, PyArray2, PyReadonlyArray1};

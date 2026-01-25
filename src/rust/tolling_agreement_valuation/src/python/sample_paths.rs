@@ -1,3 +1,9 @@
+//! # DEPRECATED: This module is no longer used and is a candidate for removal.
+//!
+//! The `sample_paths` service has been superseded by the more direct `Simulator::simulate`
+//! method, which is called from the `valuation_tutorial.ipynb` notebook. This file
+//! remains for historical purposes but should be deleted.
+
 use crate::core::services::sample_paths::{sample_paths, SamplePathsArgs};
 use crate::python::parameters::PyModelParameters;
 use numpy::{PyArray3, PyReadonlyArray1};

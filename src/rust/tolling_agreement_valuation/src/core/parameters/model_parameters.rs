@@ -1,24 +1,30 @@
 use serde::Deserialize;
 
+/// Contains the parameters for the stochastic models used in the simulation.
+///
+/// This struct holds the parameters that define the behavior of the gas and power
+/// price processes. It is generic over the number type `T`, allowing it to be used
+/// with both standard floats (`f64`) for simulation and `AADVar` for greeks calculation.
 #[derive(Debug, Deserialize, Clone)]
 pub struct ModelParameters<T> {
-    // Volatility of gas price (in percent)
+    /// Volatility of the gas price process (in percent).
     pub sigma_g: T,
-    // Volatility of power price (in percent)
+    /// Volatility of the power price process (in percent).
     pub sigma_p: T,
-    // mean reversion speed (unitless)
+    /// Mean reversion speed of the power price process (unitless).
     pub kappa: T,
-    // number of jumps per day (jumps / day)
+    /// The average number of jumps per day in the power price (jumps / day).
     pub lambda_j: T,
-    // mean jump height of power price (€ / mwh)
+    /// The mean size of a jump in the power price (€ / MWh).
     pub mu_j: T,
-    // variance of jump height (€ / mwh)
+    /// The standard deviation of the jump size in the power price (€ / MWh).
     pub sigma_j: T,
-    // correlation of gas- and power prices (€ / mwh^2)
+    /// The correlation between the gas and power price processes.
     pub rho: T,
 }
 
 impl<T> ModelParameters<T> {
+    /// Constructs a new `ModelParameters` instance.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         sigma_g: T,
