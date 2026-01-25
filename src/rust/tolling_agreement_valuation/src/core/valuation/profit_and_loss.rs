@@ -3,7 +3,7 @@ use crate::core::simulator::simulate_prices::TollingAssetIndex;
 use crate::core::simulator::simulation_result::SimulationResult;
 use anyhow::Result;
 use ndarray::{Array2, ArrayView1};
-use num_traits::{Float, FromPrimitive, Zero};
+use num_traits::{Float, FromPrimitive};
 use rayon::prelude::*;
 
 /// A stateless struct that serves as a namespace for profit calculation functions.
