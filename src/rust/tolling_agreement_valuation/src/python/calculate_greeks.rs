@@ -28,7 +28,7 @@ pub fn calculate_greeks_py<'py>(
         risk_free_rate,
     };
     
-    let result = calculate_greeks(args)
+    let result = calculate_greeks(&args)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
     let py_result = PyGreeksResult {

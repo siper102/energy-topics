@@ -1,4 +1,4 @@
-use crate::core::analytics::calculate_profit::ProfitCalculator;
+use crate::core::valuation::profit_and_loss::ProfitCalculator;
 use crate::core::parameters::ModelParameters;
 use crate::core::parameters::UnitParameter;
 use crate::core::simulator::simulate_prices::Simulator;
