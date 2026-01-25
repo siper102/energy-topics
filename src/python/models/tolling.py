@@ -7,7 +7,7 @@ import numpy as np
 from interfaces.valuation_model import ValuationModel
 import tolling_agreement_valuation
 
-class TollingModel(ValuationModel):
+class TollingModel:
     """
     Implementation of the Gas-Fired Tolling Agreement model.
     Uses a high-performance Rust backend for Monte Carlo simulation.
