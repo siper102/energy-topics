@@ -5,7 +5,7 @@ python := "uv run python"
 
 # Check code for errors
 check:
-    cd src/rust/tolling_agreement_valuation && cargo check --features python
+    cargo check
 
 # Install dependencies and build Rust extension
 setup:

@@ -8,14 +8,15 @@ name = "tolling_agreement_valuation"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+aad = { path = "../../../rust-crates/aad" }
 anyhow = "1.0.100"
-ndarray = { version = "0.15", features = ["rayon"] }
-ndarray-rand = "0.14"
-num-traits = "0.2.19"
+ndarray = { version = "0.17", features = ["rayon"] }
+ndarray-rand = "0.16" 
 numpy = { version = "0.27.1", optional = true }
 pyo3 = { version = "0.27.2", features = ["extension-module"], optional = true }
 rayon = "1.10.0"
 serde = { version = "1.0.228", features = ["derive"] }
+num-traits = "0.2"
 
 [features]
 default = []

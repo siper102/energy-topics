@@ -1,12 +1,11 @@
 use ndarray::{Array1, Array2};
-use crate::core::aad::tape::{backward, clear_tape, get_tape_len};
-use crate::core::aad::variable::AADVar;
+use aad::{backward, clear_tape, get_tape_len, AADVar};
 use crate::core::analytics::calculate_profit::ProfitCalculator;
 use crate::core::parameters::{ModelParameters, UnitParameter};
 use crate::core::simulator::simulate_prices::Simulator;
 use crate::core::simulator::simulate_prices::TollingAssetIndex;
 use anyhow::Result;
-use num_traits::{Float, FromPrimitive, One, Zero};
+use num_traits::{Float, One, Zero};
 use rayon::prelude::*;
 
 pub fn calculate_greeks(args: CalculateGreeksArgs) -> Result<GreeksResult> {
