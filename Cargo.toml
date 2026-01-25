@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "src/rust/tolling_agreement_valuation",
+    "rust-crates/aad"
+]
+resolver = "2"
