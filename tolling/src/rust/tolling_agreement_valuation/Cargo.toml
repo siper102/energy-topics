@@ -8,7 +8,7 @@ name = "tolling_agreement_valuation"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-aad = { path = "../../../rust-crates/aad" }
+aad = { path = "../../../../rust-crates/aad" }
 anyhow = "1.0.100"
 ndarray = { version = "0.17", features = ["rayon"] }
 ndarray-rand = "0.16" 
