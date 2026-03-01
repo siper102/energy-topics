@@ -1,0 +1,131 @@
+\documentclass[12pt, a4paper]{article}
+
+% Required Packages
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+% Page Geometry Setup
+\geometry{
+    top=2.5cm,
+    bottom=2.5cm,
+    left=2.5cm,
+    right=2.5cm
+}
+
+\title{\textbf{Mathematical Formulation of the Microgrid Dispatch Problem with Non-Linear Battery Degradation}}
+\author{Optimization Project Formulation}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Problem Definition}
+We are solving a Finite-Horizon Discrete-Time Optimal Control Problem. The goal is to determine the optimal power dispatch of a stationary battery storage system over a finite horizon to minimize the total operational cost. The cost comprises the net grid energy exchange and a non-linear penalty representing battery cycle degradation.
+
+\section{Sets and Indices}
+\begin{itemize}
+    \item $\mathcal{T} = \{1, 2, \dots, N\}$: The optimization horizon.
+    \item $t$: A discrete time step index, where the duration of each step is $\Delta t$ (e.g., $\Delta t = 1$ hour).
+\end{itemize}
+
+\section{Input Data (Parameters)}
+
+\subsection{System Parameters}
+\begin{itemize}
+    \item $E^{max}$: Maximum energy capacity of the battery (kWh).
+    \item $E^{min}$: Minimum allowable energy capacity to prevent deep depletion (kWh).
+    \item $P^{max}$: Maximum allowable charge and discharge power (kW).
+    \item $\eta_{c}$: Charging efficiency ($0 < \eta_{c} \le 1$).
+    \item $\eta_{d}$: Discharging efficiency ($0 < \eta_{d} \le 1$).
+    \item $\alpha$: Degradation penalty coefficient (\$/kW$^2$). Translates physical stress into economic cost.
+    \item $E_0$: Initial battery state of energy at $t=0$ (kWh).
+\end{itemize}
+
+\subsection{Time-Series Parameters}
+\begin{itemize}
+    \item $P_{load,t}$: Household power demand at time $t$ (kW).
+    \item $P_{pv,t}$: Solar photovoltaic generation at time $t$ (kW).
+    \item $\lambda^{buy}_t$: Price of purchasing electricity from the grid at time $t$ (\$/kWh).
+    \item $\lambda^{sell}_t$: Price of selling electricity to the grid at time $t$ (\$/kWh).
+\end{itemize}
+
+\section{Decision Variables}
+These are the continuous variables optimized by the Interior Point solver at each time step $t \in \mathcal{T}$:
+\begin{itemize}
+    \item $P_{buy,t} \in \mathbb{R}_{\ge 0}$: Power imported from the grid (kW).
+    \item $P_{sell,t} \in \mathbb{R}_{\ge 0}$: Power exported to the grid (kW).
+    \item $P_{ch,t} \in \mathbb{R}_{\ge 0}$: Power sent to the battery for charging (kW).
+    \item $P_{dis,t} \in \mathbb{R}_{\ge 0}$: Power drawn from the battery for discharging (kW).
+    \item $E_t \in \mathbb{R}_{\ge 0}$: Battery State of Energy at the end of time step $t$ (kWh).
+\end{itemize}
+
+\section{Mathematical Formulation}
+
+\subsection{Objective Function}
+The objective is to minimize the total cost $J$ over the entire horizon:
+
+\begin{equation}
+    \min J = \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right]
+\end{equation}
+
+\vspace{0.5cm}
+\noindent \textbf{Note on Non-Linearity:} The quadratic term $\alpha(P_{ch,t}^2 + P_{dis,t}^2)$ models the non-linear degradation proxy. In battery physics, $I^2R$ heating and high C-rates accelerate component wear. Squaring the power mathematically penalizes sudden, aggressive power spikes, forcing the solver to prefer slow, steady charging profiles.
+
+\subsection{Constraints}
+
+\noindent \textbf{1. Power Node Balance:} \\
+At every time step, the total power entering the household system must perfectly equal the power leaving or being consumed.
+\begin{equation}
+    P_{pv,t} + P_{buy,t} + P_{dis,t} = P_{load,t} + P_{sell,t} + P_{ch,t} \quad \forall t \in \mathcal{T}
+\end{equation}
+
+\noindent \textbf{2. Battery Energy Dynamics:} \\
+The energy state at time $t$ depends on the energy at $t-1$ plus the net energy flowing in/out, adjusted for conversion inefficiencies.
+\begin{equation}
+    E_t = E_{t-1} + \left( P_{ch,t} \eta_{c} - \frac{P_{dis,t}}{\eta_{d}} \right) \Delta t \quad \forall t \in \mathcal{T}
+\end{equation}
+
+\noindent \textbf{3. Operational Power Bounds:} \\
+The solver cannot command the battery to charge or discharge faster than its physical limits.
+\begin{align}
+    0 \le P_{ch,t} &\le P^{max} \quad \forall t \in \mathcal{T} \\
+    0 \le P_{dis,t} &\le P^{max} \quad \forall t \in \mathcal{T}
+\end{align}
+
+\noindent \textbf{4. State of Energy Bounds:} \\
+The battery must not be overcharged or deeply discharged.
+\begin{equation}
+    E^{min} \le E_t \le E^{max} \quad \forall t \in \mathcal{T}
+\end{equation}
+
+\noindent \textbf{5. Grid Interaction Bounds:} \\
+Power exchanges with the grid must be strictly non-negative.
+\begin{equation}
+    P_{buy,t} \ge 0, \quad P_{sell,t} \ge 0 \quad \forall t \in \mathcal{T}
+\end{equation}
+
+\subsection{Consolidated Optimization Problem}
+Bringing the objective and all constraints together, the complete deterministic microgrid dispatch problem is formulated as follows:
+
+\begin{equation}
+\begin{aligned}
+\min_{\mathbf{P}, \mathbf{E}} \quad & \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right] \\
+\text{s.t.} \quad & P_{pv,t} + P_{buy,t} + P_{dis,t} = P_{load,t} + P_{sell,t} + P_{ch,t} && \forall t \in \mathcal{T} \\
+& E_t = E_{t-1} + \left( P_{ch,t} \eta_{c} - \frac{P_{dis,t}}{\eta_{d}} \right) \Delta t && \forall t \in \mathcal{T} \\
+& 0 \le P_{ch,t} \le P^{max} && \forall t \in \mathcal{T} \\
+& 0 \le P_{dis,t} \le P^{max} && \forall t \in \mathcal{T} \\
+& E^{min} \le E_t \le E^{max} && \forall t \in \mathcal{T} \\
+& P_{buy,t} \ge 0, \quad P_{sell,t} \ge 0 && \forall t \in \mathcal{T}
+\end{aligned}
+\end{equation}
+
+Where $\mathbf{P}$ and $\mathbf{E}$ represent the vectors of all power and energy decision variables over the horizon $\mathcal{T}$.
+
+\section{Algorithm Justification}
+Because the objective function contains a convex non-linear term (the squared battery power limits) subject to linear equality and inequality constraints, the problem constitutes a Non-Linear Programming (NLP) model. This requires a specialized Interior Point algorithm, such as IPOPT (Interior Point Optimizer), to reliably compute the global minimum.
+
+\end{document}
