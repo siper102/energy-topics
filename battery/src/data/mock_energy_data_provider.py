@@ -42,20 +42,3 @@ class MockEnergyDataProvider(EnergyDataProvider):
         
         # Round the values to make them look cleaner
         return df.round(3)
-
-if __name__ == "__main__":
-    # In your ETL pipeline, you just instantiate the specific provider you want to use
-    provider: EnergyDataProvider = MockEnergyDataProvider()
-    
-    # Define your time window
-    start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    end = start + timedelta(days=1)
-    
-    # Fetch the data!
-    simulated_data = provider.fetch_data(
-        start_time=start, 
-        end_time=end, 
-        resolution_minutes=60  # Hourly data
-    )
-    
-    print(simulated_data.head(24))

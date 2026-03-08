@@ -4,7 +4,9 @@ services:
     container_name: timescaledb
     ports:
       - "5432:5432"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: gdp_db
+      POSTGRES_DB: battery
