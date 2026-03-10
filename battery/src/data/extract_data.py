@@ -5,6 +5,7 @@ import psycopg
 import pandas as pd
 from mock_energy_data_provider import MockEnergyDataProvider
 
+# 1. Setup Professional Logging (No more print statements!)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -35,29 +36,45 @@ class SensorETLPipeline:
 
         logger.info(f"Loading {len(df)} rows into {table_name}...")
         
-        # Convert index (time) into a regular column so it can be exported
-        df_reset = df.reset_index() 
-        # Convert DataFrame to a list of tuples for psycopg
-        records = df_reset.values.tolist()
+        df_reset = df.reset_index()
+        df_reset.rename(columns={'index': 'time'}, inplace=True)
+        
+        # 2. Defensively order AND rename columns to perfectly match the Database schema
+        # We explicitly map the short Pandas names to the long Postgres names
+        df_db_ready = df_reset[['time', 'load_kw', 'solar_kw', 'price_buy', 'price_sell']].rename(
+            columns={
+                'price_buy': 'price_buy_usd_per_kwh',
+                'price_sell': 'price_sell_usd_per_kwh'
+            }
+        )
+        
+        # 3. Convert DataFrame to a list of lists for psycopg
+        records = df_db_ready.values.tolist()
 
         try:
-            # psycopg3 syntax for context managers (auto-closes connection)
             with psycopg.connect(self.db_dsn) as conn:
                 with conn.cursor() as cur:
-                    # Using PostgreSQL native COPY for massive speed boosts
-                    copy_query = f"COPY {table_name} (time, load_kw, solar_kw, price_usd_per_kwh) FROM STDIN"
+                    # 4. DYNAMIC SQL MAGIC: Join the column names with commas
+                    columns_str = ", ".join(df_db_ready.columns)
+                    copy_query = f"COPY {table_name} ({columns_str}) FROM STDIN"
+                    
                     with cur.copy(copy_query) as copy:
                         for row in records:
                             copy.write_row(row)
                     
-                    conn.commit() # Save the transaction
+                    conn.commit()
             logger.info("Load complete! ✅")
             
         except psycopg.Error as e:
             logger.error(f"Database error during load: {e}")
             raise
 
+# ==========================================
+# EXECUTION BLOCK
+# ==========================================
 if __name__ == "__main__":
+    # 2. Use Environment Variables for Secrets (Fallback to local for dev)
+    # Notice the DB name is 'gdp_db' from your docker-compose, not 'battery'
     DB_DSN = os.getenv(
         "DB_DSN", 
         "postgresql://postgres:postgres@localhost:5432/battery"
@@ -66,8 +83,8 @@ if __name__ == "__main__":
     pipeline = SensorETLPipeline(db_dsn=DB_DSN)
     
     # Define time window
-    start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    end = start + timedelta(days=1)
+    start = datetime(2026, 1, 1)
+    end = datetime(2026, 1, 31)
     
     # Run the Pipeline
     data = pipeline.extract(start, end, res_minutes=60)

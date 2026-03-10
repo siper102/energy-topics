@@ -1,44 +1,61 @@
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
-from energy_data_provider import EnergyDataProvider
+from datetime import datetime
 
-class MockEnergyDataProvider(EnergyDataProvider):
+class MockEnergyDataProvider:
     """
-    Generates synthetic but somewhat realistic energy data for testing.
-    - Solar: Bell curve during the day, 0 at night.
-    - Load: Base load with an evening peak.
-    - Prices: Fixed Time-of-Use (ToU) tariffs.
+    Generates a larger, more complex synthetic dataset.
+    - Diversity: Adds cloudy/sunny day variations.
+    - Seasonality: Weekend vs. Weekday load profiles.
+    - Scale: Easily handles months of data at high resolution.
     """
     
-    def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int = 60) -> pd.DataFrame:
-        # 1. Create the time index based on the requested window
+    def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int = 15) -> pd.DataFrame:
         freq = f'{resolution_minutes}min'
-        time_index = pd.date_range(start=start_time, end=end_time, freq=freq)
+        time_index = pd.date_range(start=start_time, end=end_time, freq=freq, inclusive='left')
         n_periods = len(time_index)
         
-        # Initialize DataFrame
         df = pd.DataFrame(index=time_index)
         hour_of_day = df.index.hour
-        
-        # 2. Generate Mock Solar (Sine wave from 6 AM to 6 PM + random cloud noise)
-        # Using np.pi to create a nice curve that hits 0 at 6 and 18
-        solar_curve = np.where(
+        day_of_week = df.index.dayofweek # 0=Monday, 6=Sunday
+        # Unique integer for each day to sync weather across the same day
+        day_identifier = df.index.dayofyear + (365 * (df.index.year - df.index.year[0]))
+
+        # --- 1. Weather Variation (Solar Multiplier) ---
+        # Randomly decide if a day is 'Sunny' (1.0), 'Partly Cloudy' (0.5), or 'Overcast' (0.1)
+        np.random.seed(42) # For reproducible "weather"
+        daily_weather = np.random.choice([1.0, 0.5, 0.2], size=day_identifier.max() + 1)
+        weather_multiplier = daily_weather[day_identifier]
+
+        # --- 2. Solar Generation ---
+        solar_base = np.where(
             (hour_of_day >= 6) & (hour_of_day <= 18),
-            np.sin(np.pi * (hour_of_day - 6) / 12) * 5.0, # Max 5 kW solar peak
+            np.sin(np.pi * (hour_of_day - 6) / 12) * 5.0,
             0.0
         )
-        # Add random noise and ensure it doesn't drop below 0
-        df['solar_kw'] = np.clip(solar_curve + np.random.normal(0, 0.5, n_periods), 0, None)
+        # Apply weather and some high-frequency cloud noise
+        df['solar_kw'] = np.clip(
+            (solar_base * weather_multiplier) + np.random.normal(0, 0.2, n_periods), 
+            0, None
+        )
+
+        # --- 3. Demand (Load) ---
+        # Weekends (5,6) have higher afternoon load; Weekdays have morning/evening peaks
+        is_weekend = (day_of_week >= 5)
+        load_curve = np.where(
+            is_weekend,
+            np.where((hour_of_day >= 10) & (hour_of_day <= 20), 3.5, 1.2), # Weekend: constant high-ish
+            np.where((hour_of_day >= 7) & (hour_of_day <= 9) | (hour_of_day >= 17) & (hour_of_day <= 22), 4.5, 0.8) # Weekday peaks
+        )
+        df['load_kw'] = np.clip(load_curve + np.random.normal(0, 0.5, n_periods), 0.2, None)
+
+        # --- 4. Prices (Buy/Sell) ---
+        # Dynamic Buy: Afternoon peak $0.40, Night $0.10, Mid-day $0.20
+        df['price_buy'] = 0.15 # Default
+        df.loc[(hour_of_day >= 17) & (hour_of_day <= 21), 'price_buy'] = 0.40 # Evening Peak
+        df.loc[(hour_of_day >= 1) & (hour_of_day <= 5), 'price_buy'] = 0.10   # Night Valley
         
-        # 3. Generate Mock Load (Higher in the evening + random activity noise)
-        # Base load of 1.0 kW, bumps up to 4.0 kW between 5 PM and 10 PM
-        load_curve = np.where((hour_of_day >= 17) & (hour_of_day <= 22), 4.0, 1.0)
-        df['load_kw'] = np.clip(load_curve + np.random.normal(0, 0.4, n_periods), 0.2, None)
+        # Flat Sell rate
+        df['price_sell'] = 0.08
         
-        # 4. Generate Mock Prices (Time of Use Tariffs)
-        # Expensive ($0.35) during evening peak, cheap ($0.15) otherwise
-        df['price_usd_per_kwh'] = np.where((hour_of_day >= 17) & (hour_of_day <= 21), 0.35, 0.15)
-        
-        # Round the values to make them look cleaner
         return df.round(3)
