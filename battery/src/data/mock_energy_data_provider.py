@@ -56,6 +56,6 @@ class MockEnergyDataProvider:
         df.loc[(hour_of_day >= 1) & (hour_of_day <= 5), 'price_buy'] = 0.10   # Night Valley
         
         # Flat Sell rate
-        df['price_sell'] = 0.08
+        df['price_sell'] = df['price_buy'] - 0.02
         
         return df.round(3)
