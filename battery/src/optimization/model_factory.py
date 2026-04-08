@@ -39,8 +39,8 @@ def create_microgrid_model(
     model.T = pyo.Set(initialize=times)
 
     ### Variables
-    model.P_buy = pyo.Var(model.T, domain=pyo.NonNegativeReals)
-    model.P_sell = pyo.Var(model.T, domain=pyo.NonNegativeReals)
+    model.P_buy = pyo.Var(model.T, bounds=(0, 20.0)) # Added 20kW grid limit
+    model.P_sell = pyo.Var(model.T, bounds=(0, 20.0)) # Added 20kW grid limit
     model.P_charge = pyo.Var(model.T, bounds=(0, battery_params.max_power_kw))
     model.P_discharge = pyo.Var(model.T, bounds=(0, battery_params.max_power_kw))
     
@@ -56,9 +56,16 @@ def create_microgrid_model(
     def objective_rule(m):
         total_cost = 0
         for t in m.T:
+            # Main economic term
             energy_cost = (m.lambda_buy[t] * m.P_buy[t]) - (m.lambda_sell[t] * m.P_sell[t])
+            
+            # Battery degradation penalty
             degradation = hyper_params.alpha * (m.P_charge[t]**2 + m.P_discharge[t]**2)
-            total_cost += (energy_cost * delta_t) + degradation
+            
+            # Grid regularization (prevents buy/sell floating at zero prices)
+            grid_penalty = 1e-6 * (m.P_buy[t]**2 + m.P_sell[t]**2)
+            
+            total_cost += (energy_cost * delta_t) + degradation + grid_penalty
         return total_cost
     model.cost = pyo.Objective(rule=objective_rule, sense=pyo.minimize)
 

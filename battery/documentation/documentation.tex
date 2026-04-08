@@ -56,8 +56,8 @@ We are solving a Finite-Horizon Discrete-Time Optimal Control Problem. The goal 
 \section{Decision Variables}
 These are the continuous variables optimized by the Interior Point solver at each time step $t \in \mathcal{T}$:
 \begin{itemize}
-    \item $P_{buy,t} \in \mathbb{R}_{\ge 0}$: Power imported from the grid (kW).
-    \item $P_{sell,t} \in \mathbb{R}_{\ge 0}$: Power exported to the grid (kW).
+    \item $P_{buy,t} \in [0, 20]$: Power imported from the grid (kW).
+    \item $P_{sell,t} \in [0, 20]$: Power exported to the grid (kW).
     \item $P_{ch,t} \in \mathbb{R}_{\ge 0}$: Power sent to the battery for charging (kW).
     \item $P_{dis,t} \in \mathbb{R}_{\ge 0}$: Power drawn from the battery for discharging (kW).
     \item $E_t \in \mathbb{R}_{\ge 0}$: Battery State of Energy at the end of time step $t$ (kWh).
@@ -69,10 +69,12 @@ These are the continuous variables optimized by the Interior Point solver at eac
 The objective is to minimize the total cost $J$ over the entire horizon:
 
 \begin{equation}
-    \min J = \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right]
+    \min J = \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) + \epsilon \left( P_{buy,t}^2 + P_{sell,t}^2 \right) \right]
 \end{equation}
 
 \vspace{0.5cm}
+\noindent \textbf{Note on Regularization:} The small quadratic term $\epsilon(P_{buy,t}^2 + P_{sell,t}^2)$ where $\epsilon = 10^{-6}$ acts as a numerical regularizer. It ensures that during periods of zero prices or high solar generation, the solver avoids non-zero "mirrored" buy and sell values (floating variables) by providing a slight incentive to keep grid interaction at zero.
+
 \noindent \textbf{Note on Non-Linearity:} The quadratic term $\alpha(P_{ch,t}^2 + P_{dis,t}^2)$ models the non-linear degradation proxy. In battery physics, $I^2R$ heating and high C-rates accelerate component wear. Squaring the power mathematically penalizes sudden, aggressive power spikes, forcing the solver to prefer slow, steady charging profiles.
 
 \subsection{Constraints}
@@ -103,9 +105,9 @@ The battery must not be overcharged or deeply discharged.
 \end{equation}
 
 \noindent \textbf{5. Grid Interaction Bounds:} \\
-Power exchanges with the grid must be strictly non-negative.
+Power exchanges with the grid are limited by physical infrastructure (e.g., 20 kW fuse).
 \begin{equation}
-    P_{buy,t} \ge 0, \quad P_{sell,t} \ge 0 \quad \forall t \in \mathcal{T}
+    0 \le P_{buy,t} \le 20, \quad 0 \le P_{sell,t} \le 20 \quad \forall t \in \mathcal{T}
 \end{equation}
 
 \subsection{Consolidated Optimization Problem}
@@ -113,13 +115,13 @@ Bringing the objective and all constraints together, the complete deterministic 
 
 \begin{equation}
 \begin{aligned}
-\min_{\mathbf{P}, \mathbf{E}} \quad & \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right] \\
+\min_{\mathbf{P}, \mathbf{E}} \quad & \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) + \epsilon \left( P_{buy,t}^2 + P_{sell,t}^2 \right) \right] \\
 \text{s.t.} \quad & P_{pv,t} + P_{buy,t} + P_{dis,t} = P_{load,t} + P_{sell,t} + P_{ch,t} && \forall t \in \mathcal{T} \\
 & E_t = E_{t-1} + \left( P_{ch,t} \eta_{c} - \frac{P_{dis,t}}{\eta_{d}} \right) \Delta t && \forall t \in \mathcal{T} \\
 & 0 \le P_{ch,t} \le P^{max} && \forall t \in \mathcal{T} \\
 & 0 \le P_{dis,t} \le P^{max} && \forall t \in \mathcal{T} \\
 & E^{min} \le E_t \le E^{max} && \forall t \in \mathcal{T} \\
-& P_{buy,t} \ge 0, \quad P_{sell,t} \ge 0 && \forall t \in \mathcal{T}
+& 0 \le P_{buy,t} \le 20, \quad 0 \le P_{sell,t} \le 20 && \forall t \in \mathcal{T}
 \end{aligned}
 \end{equation}
 
