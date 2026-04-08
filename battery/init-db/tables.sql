@@ -12,8 +12,13 @@ CREATE TABLE battery_parameters (
     max_power_kw NUMERIC NOT NULL,
     efficiency_charge NUMERIC NOT NULL,
     efficiency_discharge NUMERIC NOT NULL,
+    initial_soc_kwh NUMERIC NOT NULL DEFAULT 0.0,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Seed initial battery parameters
+INSERT INTO battery_parameters (max_capacity_kwh, max_power_kw, efficiency_charge, efficiency_discharge, initial_soc_kwh)
+VALUES (13.5, 5.0, 0.95, 0.95, 0.0);
 
 -- ==========================================
 -- 2. INPUTS (Time-series Hypertable)

@@ -5,18 +5,6 @@ from model_factory import BatteryParams
 import os
 import psycopg
 
-# ==========================================
-# 1. HARDWARE CONSTRAINTS (Mocking Table 1)
-# ==========================================
-# Normally queried from: microgrid_components
-battery_params = {
-    "max_capacity_kwh": 13.5,  # e.g., Tesla Powerwall
-    "max_power_kw": 5.0,       # Max charge/discharge rate
-    "efficiency_charge": 0.95,   # Charging efficiency
-    "efficiency_discharge": 0.95,   # Discharging efficiency
-    "initial_soc_kwh": 0.0    # Assume battery starts half full
-}
-
 DB_DSN = os.getenv(
     "DB_DSN", 
     "postgresql://postgres:postgres@localhost:5432/battery"
@@ -49,8 +37,29 @@ def load_data() -> tuple[pd.DataFrame, BatteryParams]:
         df_telemetry = pd.read_sql(query, conn, index_col='time')
         
         # 2. Fetch Static Battery Parameters
-        # We just grab the most recent entry from our parameters table
-        params = BatteryParams(**battery_params)
+        # We just grab the first entry from our parameters table
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT 
+                    max_capacity_kwh, 
+                    max_power_kw, 
+                    efficiency_charge, 
+                    efficiency_discharge, 
+                    initial_soc_kwh 
+                FROM battery_parameters 
+                LIMIT 1;
+            """)
+            row = cur.fetchone()
+            if not row:
+                raise ValueError("No battery parameters found in database.")
+                
+            params = BatteryParams(
+                max_capacity_kwh=float(row[0]),
+                max_power_kw=float(row[1]),
+                efficiency_charge=float(row[2]),
+                efficiency_discharge=float(row[3]),
+                initial_soc_kwh=float(row[4])
+            )
 
     return df_telemetry, params
 
