@@ -5,7 +5,6 @@ import pandas as pd
 class EnergyDataProvider(ABC):
     """
     Abstract interface for fetching time-series energy data.
-    Any future data source (CSV, API, Database) must implement this interface.
     """
     
     @abstractmethod
@@ -18,9 +17,27 @@ class EnergyDataProvider(ABC):
         """
         Fetches or generates energy data for a given time window.
         
-        Returns a Pandas DataFrame with the following columns:
-        - load_kw (float)
-        - solar_kw (float)
-        - price_usd_per_kwh (float)
+        Returns a Pandas DataFrame indexed by time.
         """
+        pass
+
+class LoadProvider(EnergyDataProvider):
+    """Specific interface for Load data (load_kw)."""
+    @abstractmethod
+    def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int) -> pd.DataFrame:
+        """Should return a DataFrame with column 'load_kw'."""
+        pass
+
+class SolarProvider(EnergyDataProvider):
+    """Specific interface for Solar data (solar_kw)."""
+    @abstractmethod
+    def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int) -> pd.DataFrame:
+        """Should return a DataFrame with column 'solar_kw'."""
+        pass
+
+class PriceProvider(EnergyDataProvider):
+    """Specific interface for Price data (price_buy, price_sell)."""
+    @abstractmethod
+    def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int) -> pd.DataFrame:
+        """Should return a DataFrame with columns 'price_buy' and 'price_sell'."""
         pass

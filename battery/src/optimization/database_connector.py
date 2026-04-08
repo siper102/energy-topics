@@ -14,7 +14,7 @@ battery_params = {
     "max_power_kw": 5.0,       # Max charge/discharge rate
     "efficiency_charge": 0.95,   # Charging efficiency
     "efficiency_discharge": 0.95,   # Discharging efficiency
-    "initial_soc_kwh": 6.75    # Assume battery starts half full
+    "initial_soc_kwh": 0.0    # Assume battery starts half full
 }
 
 DB_DSN = os.getenv(

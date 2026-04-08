@@ -32,6 +32,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/azure-storage-common-cpp-12.12.0-he467506_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/azure-storage-files-datalake-cpp-12.14.0-hf8a9d22_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/backports.zstd-1.3.0-py312h44dc372_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/beautifulsoup4-4.14.3-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/blinker-1.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/brotli-python-1.2.0-py312h0dfefe5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-hd037594_9.conda
@@ -42,6 +43,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/charset-normalizer-3.4.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/click-7.1.2-pyh9f0ad1d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cyrus-sasl-2.1.28-hb961e35_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/entsoe-py-0.7.11-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gflags-2.2.2-hf9b8971_1005.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/gitdb-4.0.12-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/gitpython-3.1.46-pyhd8ed1ab_0.conda
@@ -156,6 +158,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/six-1.17.0-pyhe01879c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/smmap-5.0.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/snappy-1.2.2-hada39a4_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/soupsieve-2.8.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/sqlalchemy-2.0.48-py312hb3ab3e3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/streamlit-1.55.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tenacity-9.1.4-pyhcf101f3_0.conda
@@ -487,7 +490,7 @@ packages:
 - pypi: ./
   name: battery
   version: 0.1.0
-  sha256: 44fedd01bba1e83515af7448eddd39df1a62be78470d092427deea4868f3a0b8
+  sha256: 2612dea0daa5a2c6c6b7d1776355a48edbff7741a80978a2df5998e75dcb3092
   requires_dist:
   - numpy>=2.0.0
   - pandas>=2.2.0
@@ -495,6 +498,19 @@ packages:
   - pyomo>=6.10.0
   - sqlalchemy>=2.0.48
   requires_python: '>=3.12'
+- conda: https://conda.anaconda.org/conda-forge/noarch/beautifulsoup4-4.14.3-pyha770c72_0.conda
+  sha256: bf1e71c3c0a5b024e44ff928225a0874fc3c3356ec1a0b6fe719108e6d1288f6
+  md5: 5267bef8efea4127aacd1f4e1f149b6e
+  depends:
+  - python >=3.10
+  - soupsieve >=1.2
+  - typing-extensions
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/beautifulsoup4?source=hash-mapping
+  size: 90399
+  timestamp: 1764520638652
 - conda: https://conda.anaconda.org/conda-forge/noarch/blinker-1.9.0-pyhff2d567_0.conda
   sha256: f7efd22b5c15b400ed84a996d777b6327e5c402e79e3c534a7e086236f1eb2dc
   md5: 42834439227a4551b939beeeb8a4b085
@@ -609,6 +625,21 @@ packages:
   purls: []
   size: 194397
   timestamp: 1771943557428
+- conda: https://conda.anaconda.org/conda-forge/noarch/entsoe-py-0.7.11-pyhd8ed1ab_0.conda
+  sha256: da51a00f83841734b771ffa20a21b64109301809838af6898bc120cc6144cf65
+  md5: 261fb5cd17abd153eb407bd169f4c504
+  depends:
+  - beautifulsoup4 >=4.11.1
+  - pandas >=2.2.0
+  - python >=3.10
+  - pytz
+  - requests
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/entsoe-py?source=hash-mapping
+  size: 946895
+  timestamp: 1773279471379
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gflags-2.2.2-hf9b8971_1005.conda
   sha256: fd56ed8a1dab72ab90d8a8929b6f916a6d9220ca297ff077f8f04c5ed3408e20
   md5: 57a511a5905caa37540eb914dfcbf1fb
@@ -2209,6 +2240,17 @@ packages:
   purls: []
   size: 38883
   timestamp: 1762948066818
+- conda: https://conda.anaconda.org/conda-forge/noarch/soupsieve-2.8.3-pyhd8ed1ab_0.conda
+  sha256: 23b71ecf089967d2900126920e7f9ff18cdcef82dbff3e2f54ffa360243a17ac
+  md5: 18de09b20462742fe093ba39185d9bac
+  depends:
+  - python >=3.10
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/soupsieve?source=hash-mapping
+  size: 38187
+  timestamp: 1769034509657
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/sqlalchemy-2.0.48-py312hb3ab3e3_0.conda
   sha256: 9ed0b76709c7832bb0a516f29d4c7f441c29444e8f99c07c33911f446161dc55
   md5: 08da67cb6a9f3170cab44cb9c4958856
