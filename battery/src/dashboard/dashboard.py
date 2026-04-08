@@ -14,7 +14,7 @@ if opt_dir not in sys.path:
     sys.path.append(opt_dir)
 
 try:
-    from database_connector import load_data, save_data, DB_DSN
+    from database_connector import load_data, save_data, DB_DSN, get_available_batteries, clear_dispatch_plans
     from model_factory import create_microgrid_model, Hyperparameters
     from solver import run_optimization_and_get_results
 except ImportError as e:
@@ -46,18 +46,38 @@ def get_dispatch_plans():
 
 # --- Sidebar ---
 st.sidebar.header("Optimization Settings")
-alpha = st.sidebar.slider("Degradation Penalty (α)", 0.0, 5.0, 1.5, 0.1)
+
+# 1. Battery Selection
+batteries = get_available_batteries()
+battery_options = {f"ID: {row['id']} ({row['max_capacity_kwh']} kWh)": row['id'] for _, row in batteries.iterrows()}
+selected_battery_label = st.sidebar.selectbox("Select Battery Storage", options=list(battery_options.keys()))
+selected_battery_id = battery_options[selected_battery_label]
+
+# 2. Display Battery Parameters
+_, battery_params = load_data(battery_id=selected_battery_id)
+with st.sidebar.expander("Battery Parameters", expanded=True):
+    st.write(f"**Capacity:** {battery_params.max_capacity_kwh} kWh")
+    st.write(f"**Max Power:** {battery_params.max_power_kw} kW")
+    st.write(f"**Eff. Charge:** {battery_params.efficiency_charge*100}%")
+    st.write(f"**Eff. Discharge:** {battery_params.efficiency_discharge*100}%")
+    st.write(f"**Initial SoC:** {battery_params.initial_soc_kwh} kWh")
+
+# 3. Alpha Slider (Reduced scale as requested)
+alpha = st.sidebar.slider("Degradation Penalty (α)", 0.0001, 0.1, 0.001, 0.0001, format="%.4f")
 
 if st.sidebar.button("🚀 Run Optimization"):
     with st.status("Running optimization pipeline..."):
-        st.write("Loading data from database...")
-        time_series, battery_params = load_data()
+        st.write("Clearing old dispatch plans...")
+        clear_dispatch_plans()
+        
+        st.write(f"Loading data for battery ID {selected_battery_id}...")
+        time_series, b_params = load_data(battery_id=selected_battery_id)
         
         st.write("Building Pyomo model...")
         hyper_params = Hyperparameters(alpha=alpha)
         model = create_microgrid_model(
             time_series=time_series,
-            battery_params=battery_params,
+            battery_params=b_params,
             hyper_params=hyper_params
         )
         
@@ -73,7 +93,7 @@ if st.sidebar.button("🚀 Run Optimization"):
 # --- Main Dashboard ---
 try:
     # 1. Load Data
-    telemetry, battery_params = load_data()
+    telemetry, battery_params = load_data(battery_id=selected_battery_id)
     
     # 2. Try to Load Dispatch Plan
     try:
