@@ -17,6 +17,9 @@ class Hyperparameters:
     # Degradation penalty (USD / kW^2). 
     # Translates high in / out flows from the battery in cost for degradation
     alpha: float
+    # Grid usage fee (USD / kWh).
+    # Represents network fees or transaction costs for using the grid.
+    grid_fee: float
 
 def create_microgrid_model(
     time_series: pd.DataFrame,
@@ -56,16 +59,16 @@ def create_microgrid_model(
     def objective_rule(m):
         total_cost = 0
         for t in m.T:
-            # Main economic term
+            # Main economic term (Energy Purchase/Sale)
             energy_cost = (m.lambda_buy[t] * m.P_buy[t]) - (m.lambda_sell[t] * m.P_sell[t])
             
+            # Grid usage fees (Network/Transaction costs)
+            grid_usage_cost = hyper_params.grid_fee * (m.P_buy[t] + m.P_sell[t])
+
             # Battery degradation penalty
             degradation = hyper_params.alpha * (m.P_charge[t]**2 + m.P_discharge[t]**2)
             
-            # Grid regularization (prevents buy/sell floating at zero prices)
-            grid_penalty = 1e-6 * (m.P_buy[t]**2 + m.P_sell[t]**2)
-            
-            total_cost += (energy_cost * delta_t) + degradation + grid_penalty
+            total_cost += (energy_cost + grid_usage_cost) * delta_t + degradation
         return total_cost
     model.cost = pyo.Objective(rule=objective_rule, sense=pyo.minimize)
 

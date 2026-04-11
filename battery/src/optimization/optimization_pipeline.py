@@ -6,7 +6,7 @@ from model_factory import Hyperparameters
 ### Battery Parameter class
 
 ### Hyperparameters
-hyper_params = Hyperparameters(alpha=0.001)
+hyper_params = Hyperparameters(alpha=0.001, grid_fee=0.01)
 
 class OptimizationPipeline:
     def __init__(self, hyper_params: Hyperparameters):

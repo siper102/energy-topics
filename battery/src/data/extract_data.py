@@ -109,8 +109,8 @@ if __name__ == "__main__":
     )
     
     # Define time window
-    start = datetime(2026, 1, 1)
-    end = datetime(2026, 1, 10)
+    start = datetime(2025, 1, 1)
+    end = datetime(2025, 1, 2)
     
     # Run the Pipeline
     data = pipeline.extract(start, end, res_minutes=60)
