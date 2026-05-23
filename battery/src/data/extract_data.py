@@ -1,9 +1,11 @@
 import os
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
 import psycopg
 import pandas as pd
-from mock_energy_data_provider import MockLoadProvider, MockSolarProvider, MockPriceProvider
+from mock_energy_data_provider import MockLoadProvider
+from open_meteo_solar_provider import OpenMeteoSolarProvider
 from entsoe_e_data_provider import ENTSOEPriceProvider
 from energy_data_provider import LoadProvider, SolarProvider, PriceProvider
 
@@ -89,16 +91,28 @@ class SensorETLPipeline:
 # EXECUTION BLOCK
 # ==========================================
 if __name__ == "__main__":
+    load_dotenv()
+    
     DB_DSN = os.getenv(
         "DB_DSN", 
         "postgresql://postgres:postgres@localhost:5432/battery"
     )
-    API_KEY = "20168483-d70c-4e3f-9578-57a52ee319a8"
+    API_KEY = os.getenv("ENTSOE_API_KEY")
+    
+    if not API_KEY:
+        logger.error("ENTSOE_API_KEY not found. Please set it in your .env file.")
+        exit(1)
     
     # 2. Select your providers here (The core request: DECAPPING!)
     # We can now mix and match easily
     load_p = MockLoadProvider()
-    solar_p = MockSolarProvider()
+    solar_p = OpenMeteoSolarProvider(
+        lat=51.26, 
+        lon=6.84, 
+        peak_power_kw=0.5, 
+        tilt=35, 
+        azimuth=0
+    )
     price_p = ENTSOEPriceProvider(API_KEY) 
     
     pipeline = SensorETLPipeline(
@@ -109,8 +123,8 @@ if __name__ == "__main__":
     )
     
     # Define time window
-    start = datetime(2025, 1, 1)
-    end = datetime(2025, 1, 2)
+    start = datetime(2025, 2, 1)
+    end = datetime(2025, 2, 5)
     
     # Run the Pipeline
     data = pipeline.extract(start, end, res_minutes=60)
