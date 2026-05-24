@@ -37,7 +37,7 @@ class SensorETLPipeline:
             df_load = self.load_provider.fetch_data(start_time, end_time, res_minutes)
             df_solar = self.solar_provider.fetch_data(start_time, end_time, res_minutes)
             df_price = self.price_provider.fetch_data(start_time, end_time, res_minutes)
-            
+
             # 2. Merge all data on the time index
             # We use an inner join to ensure we only have complete records
             df_combined = df_load.join([df_solar, df_price], how='inner')
@@ -109,9 +109,9 @@ if __name__ == "__main__":
     solar_p = OpenMeteoSolarProvider(
         lat=51.26, 
         lon=6.84, 
-        peak_power_kw=0.5, 
-        tilt=35, 
-        azimuth=0
+        peak_power_kw=5.0,  # 5.0 kWp is a standard size (approx. 12-15 physical panels)
+        tilt=35,            # 30° to 45° is optimal for mid-latitudes to capture sun year-round
+        azimuth=180         # MANDATORY for Open-Meteo to face due South!
     )
     price_p = ENTSOEPriceProvider(API_KEY) 
     
@@ -123,8 +123,8 @@ if __name__ == "__main__":
     )
     
     # Define time window
-    start = datetime(2025, 2, 1)
-    end = datetime(2025, 2, 5)
+    start = datetime(2025, 6, 1)
+    end = datetime(2025, 6, 5)
     
     # Run the Pipeline
     data = pipeline.extract(start, end, res_minutes=60)

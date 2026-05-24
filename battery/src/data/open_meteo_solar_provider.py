@@ -16,19 +16,22 @@ class OpenMeteoSolarProvider(SolarProvider):
         self.tilt = tilt
         self.azimuth = azimuth
         # Open-Meteo doesn't require an API key for non-commercial use
-        self.url = "https://api.open-meteo.com/v1/forecast"
+        self.url = "https://archive-api.open-meteo.com/v1/archive"
 
     def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int = 60) -> pd.DataFrame:
         # 1. Map parameters to Open-Meteo's format
         # Note: Open-Meteo assumes 0 = South, 90 = West, -90 = East
+        start_str = start_time.strftime("%Y-%m-%d")
+        end_str = end_time.strftime("%Y-%m-%d")
         params = {
             "latitude": self.lat,
             "longitude": self.lon,
+            "start_date": start_str,
+            "end_date": end_str,
             "hourly": "global_tilted_irradiance",
             "tilt": self.tilt,
             "azimuth": self.azimuth,
-            "timezone": "UTC",
-            "forecast_days": 3 # Grabs enough forward window
+            "timezone": "UTC"
         }
 
         response = requests.get(self.url, params=params)
@@ -50,7 +53,6 @@ class OpenMeteoSolarProvider(SolarProvider):
         # We also apply a standard 14% performance loss factor (inverter, cabling, dirt)
         loss_factor = 0.86 
         df["solar_kw"] = (df["gti"] / 1000.0) * self.peak_power_kw * loss_factor
-
         # 4. Clean up, filter to requested window, and match resolution
         df_final = df[["solar_kw"]].loc[start_time:end_time]
         freq = f"{resolution_minutes}min"
