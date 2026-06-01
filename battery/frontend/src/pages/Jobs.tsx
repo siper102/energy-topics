@@ -20,6 +20,7 @@ const Jobs: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showTriggerForm, setShowTriggerForm] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
   
   // Form state
   const [startDate, setStartDate] = useState('2025-06-01');
@@ -45,12 +46,21 @@ const Jobs: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const handleCloseModal = useCallback(() => {
+    if (!selectedJob || isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setSelectedJob(null);
+      setIsClosing(false);
+    }, 250); // match animation duration
+  }, [selectedJob, isClosing]);
+
   // Close modal on ESC key
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Escape') {
-      setSelectedJob(null);
+      handleCloseModal();
     }
-  }, []);
+  }, [handleCloseModal]);
 
   useEffect(() => {
     if (selectedJob) {
@@ -121,7 +131,7 @@ const Jobs: React.FC = () => {
     zIndex: 1000,
     padding: '2rem',
     backdropFilter: 'blur(4px)',
-    animation: 'modalFadeIn 0.2s ease-out'
+    animation: isClosing ? 'modalFadeOut 0.25s ease-in forwards' : 'modalFadeIn 0.25s ease-out forwards'
   };
 
   const modalContentStyle: React.CSSProperties = {
@@ -134,7 +144,7 @@ const Jobs: React.FC = () => {
     position: 'relative',
     padding: '2rem',
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    animation: 'modalSlideIn 0.3s ease-out'
+    animation: isClosing ? 'modalSlideOut 0.25s ease-in forwards' : 'modalSlideIn 0.25s ease-out forwards'
   };
 
   return (
@@ -144,9 +154,17 @@ const Jobs: React.FC = () => {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes modalFadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
         @keyframes modalSlideIn {
           from { transform: scale(0.95) translateY(20px); opacity: 0; }
           to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        @keyframes modalSlideOut {
+          from { transform: scale(1) translateY(0); opacity: 1; }
+          to { transform: scale(0.95) translateY(20px); opacity: 0; }
         }
         .job-card:hover {
           transform: translateY(-2px);
@@ -257,7 +275,7 @@ const Jobs: React.FC = () => {
 
       {/* Dashboard Modal */}
       {selectedJob && (
-        <div style={modalOverlayStyle} onClick={() => setSelectedJob(null)}>
+        <div style={modalOverlayStyle} onClick={handleCloseModal}>
           <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <div>
@@ -267,7 +285,7 @@ const Jobs: React.FC = () => {
                 </p>
               </div>
               <button 
-                onClick={() => setSelectedJob(null)}
+                onClick={handleCloseModal}
                 style={{ 
                   padding: '0.5rem 1rem', 
                   background: '#e74c3c', 
