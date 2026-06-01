@@ -10,3 +10,56 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: battery
+
+  redis:
+    image: redis:7-alpine
+    container_name: battery_redis
+    ports:
+      - "6379:6379"
+
+  core_api:
+    build: ./core_api
+    container_name: core_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
+      - OPTIMIZATION_SERVICE_URL=http://optimization_api:8001
+      - ENTSOE_API_KEY=${ENTSOE_API_KEY}
+    depends_on:
+      - timescaledb
+      - optimization_api
+
+  optimization_api:
+    build: ./optimization_service
+    container_name: optimization_api
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
+    depends_on:
+      - redis
+      - timescaledb
+
+  optimization_worker:
+    build: ./optimization_service
+    container_name: optimization_worker
+    command: celery -A worker.celery_app worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
+    depends_on:
+      - redis
+      - timescaledb
+      - optimization_api
+
+  frontend:
+    build: ./frontend
+    container_name: battery_frontend
+    ports:
+      - "3001:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - core_api

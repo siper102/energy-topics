@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+celery
+redis
+pyomo
+psycopg[binary]
+pandas
+numpy
