@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { jobService } from '../services/api';
 import Dashboard from './Dashboard';
 
@@ -45,6 +45,22 @@ const Jobs: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Close modal on ESC key
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      setSelectedJob(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedJob) {
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      window.removeEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedJob, handleKeyDown]);
+
   const handleTrigger = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -71,7 +87,7 @@ const Jobs: React.FC = () => {
     justifyContent: 'space-between',
     alignItems: 'center',
     cursor: 'pointer',
-    transition: 'transform 0.1s ease',
+    transition: 'all 0.2s ease',
   };
 
   const statusBadgeStyle = (status: string): React.CSSProperties => {
@@ -103,7 +119,9 @@ const Jobs: React.FC = () => {
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
-    padding: '2rem'
+    padding: '2rem',
+    backdropFilter: 'blur(4px)',
+    animation: 'modalFadeIn 0.2s ease-out'
   };
 
   const modalContentStyle: React.CSSProperties = {
@@ -115,11 +133,28 @@ const Jobs: React.FC = () => {
     overflowY: 'auto',
     position: 'relative',
     padding: '2rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    animation: 'modalSlideIn 0.3s ease-out'
   };
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem' }}>
+      <style>{`
+        @keyframes modalFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes modalSlideIn {
+          from { transform: scale(0.95) translateY(20px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .job-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          border-color: #3498db;
+        }
+      `}</style>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#2d3748' }}>
         <span>🔋</span> BatteryOpt Overview
       </div>
@@ -192,6 +227,7 @@ const Jobs: React.FC = () => {
         {jobs.map(job => (
           <div 
             key={job.id} 
+            className="job-card"
             style={{
               ...cardStyle,
               borderLeft: selectedJob?.id === job.id ? '6px solid #3498db' : '1px solid #e1e4e8'
@@ -242,7 +278,7 @@ const Jobs: React.FC = () => {
                   fontWeight: 'bold'
                 }}
               >
-                Close Analysis
+                Close (Esc)
               </button>
             </div>
             

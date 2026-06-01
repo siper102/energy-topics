@@ -21,6 +21,35 @@ interface DashboardProps {
   endDate: string;
 }
 
+const SkeletonCard: React.FC<{ height?: number; width?: string }> = ({ height = 300, width = '100%' }) => (
+  <div style={{ 
+    height, 
+    width, 
+    background: '#eee', 
+    borderRadius: '12px', 
+    marginBottom: '2rem',
+    overflow: 'hidden',
+    position: 'relative'
+  }}>
+    <div style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      background: 'linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.5s infinite linear'
+    }} />
+    <style>{`
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+    `}</style>
+  </div>
+);
+
 const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -75,10 +104,6 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
     };
   }, [data]);
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading dashboard...</div>;
-  if (error) return <div style={{ color: '#e74c3c', padding: '2rem', textAlign: 'center' }}>{error}</div>;
-  if (!data || data.length === 0) return <div style={{ padding: '2rem', textAlign: 'center' }}>No data found for this range.</div>;
-
   const chartCardStyle: React.CSSProperties = {
     marginBottom: '2rem',
     padding: '1.5rem',
@@ -97,11 +122,37 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
     boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
   };
 
+  if (loading) return (
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+        <SkeletonCard height={80} />
+        <SkeletonCard height={80} />
+        <SkeletonCard height={80} />
+      </div>
+      <SkeletonCard height={250} />
+      <SkeletonCard height={250} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <SkeletonCard height={250} />
+        <SkeletonCard height={250} />
+      </div>
+    </div>
+  );
+
+  if (error) return <div style={{ color: '#e74c3c', padding: '2rem', textAlign: 'center' }}>{error}</div>;
+  if (!data || data.length === 0) return <div style={{ padding: '2rem', textAlign: 'center' }}>No data found for this range.</div>;
+
   const AXIS_COLOR = "#2d3748";
   const GRID_COLOR = "#cbd5e0";
 
   return (
-    <div style={{ width: '100%' }}>
+    <div style={{ width: '100%', animation: 'fadeIn 0.5s ease-out' }}>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      
       {/* Metrics Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div style={metricCardStyle}>
