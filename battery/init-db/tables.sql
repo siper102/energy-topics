@@ -51,3 +51,19 @@ CREATE TABLE dispatch_plans (
 -- Convert the time-series tables to hypertables
 SELECT create_hypertable('sensor_telemetry', 'time');
 SELECT create_hypertable('dispatch_plans', 'target_time');
+
+-- ==========================================
+-- 4. JOBS TRACKING (Standard Postgres)
+-- ==========================================
+CREATE TABLE jobs (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(50) NOT NULL, -- e.g., 'FULL_RUN', 'INGEST', 'OPTIMIZE'
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'RUNNING', 'SUCCESS', 'FAILURE'
+    start_date DATE,
+    end_date DATE,
+    alpha NUMERIC,
+    grid_fee NUMERIC,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at TIMESTAMPTZ
+);

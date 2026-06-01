@@ -3,6 +3,7 @@ import logging
 import psycopg
 import pandas as pd
 from datetime import datetime, timedelta
+from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from data.extract_data import SensorETLPipeline
@@ -87,29 +88,41 @@ async def trigger_ingestion(request: IngestRequest, background_tasks: Background
     return {"message": "Data ingestion triggered in the background."}
 
 @router.get("/dashboard-data")
-async def get_dashboard_data():
+async def get_dashboard_data(start_date: Optional[str] = None, end_date: Optional[str] = None):
     """
     Fetches the latest telemetry and dispatch plans for the dashboard.
+    Optional filtering by date range.
     """
     DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@localhost:5432/battery")
     
     try:
         with psycopg.connect(DB_DSN) as conn:
-            # Fetch telemetry
-            query_telemetry = """
+            # Build queries with optional filtering
+            where_clause_telemetry = ""
+            where_clause_plans = ""
+            params = []
+            
+            if start_date and end_date:
+                where_clause_telemetry = "WHERE time >= %s AND time <= %s"
+                where_clause_plans = "WHERE target_time >= %s AND target_time <= %s"
+                params = [start_date, end_date]
+            
+            query_telemetry = f"""
             SELECT time, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh 
             FROM sensor_telemetry 
+            {where_clause_telemetry}
             ORDER BY time ASC;
             """
-            df_telemetry = pd.read_sql(query_telemetry, conn)
             
-            # Fetch dispatch plans
-            query_plans = """
+            query_plans = f"""
             SELECT target_time, cmd_charge_kw, cmd_discharge_kw, expected_soc_kwh, expected_grid_buy_kw, expected_grid_sell_kw
             FROM dispatch_plans
+            {where_clause_plans}
             ORDER BY target_time ASC;
             """
-            df_plans = pd.read_sql(query_plans, conn)
+            
+            df_telemetry = pd.read_sql(query_telemetry, conn, params=params)
+            df_plans = pd.read_sql(query_plans, conn, params=params)
             
             # Merge on time
             df_telemetry['time'] = pd.to_datetime(df_telemetry['time'])

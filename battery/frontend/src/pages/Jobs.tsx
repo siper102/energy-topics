@@ -1,217 +1,258 @@
 import React, { useState, useEffect } from 'react';
-import { dataService, optimizationService } from '../services/api';
+import { jobService } from '../services/api';
+import Dashboard from './Dashboard';
+
+interface Job {
+  id: number;
+  type: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  alpha: number;
+  grid_fee: number;
+  created_at: string;
+  finished_at: string | null;
+  error_message: string | null;
+}
 
 const Jobs: React.FC = () => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showTriggerForm, setShowTriggerForm] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  
+  // Form state
   const [startDate, setStartDate] = useState('2025-06-01');
   const [endDate, setEndDate] = useState('2025-06-05');
   const [alpha, setAlpha] = useState(0.001);
   const [gridFee, setGridFee] = useState(0.01);
-  const [taskId, setTaskId] = useState<string | null>(null);
-  const [status, setStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [ingestStatus, setIngestStatus] = useState<any>(null);
-
-  const handleIngest = async () => {
+  const fetchJobs = async () => {
     try {
-      await dataService.triggerIngestion(startDate, endDate);
-      setIngestStatus({ status: 'RUNNING', message: 'Triggered...' });
+      const data = await jobService.listJobs();
+      setJobs(data);
     } catch (error) {
-      console.error(error);
-      alert('Failed to trigger ingestion');
+      console.error('Failed to fetch jobs:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    let interval: any;
-    if (ingestStatus?.status === 'RUNNING') {
-      interval = setInterval(async () => {
-        try {
-          const data = await dataService.getIngestionStatus();
-          setIngestStatus(data);
-          if (data.status !== 'RUNNING') {
-            clearInterval(interval);
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      }, 2000);
-    }
+    fetchJobs();
+    const interval = setInterval(fetchJobs, 5000);
     return () => clearInterval(interval);
-  }, [ingestStatus]);
+  }, []);
 
-  const handleOptimize = async () => {
-    setLoading(true);
+  const handleTrigger = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
     try {
-      const data = await optimizationService.triggerOptimization(alpha, gridFee);
-      setTaskId(data.task_id);
-      setStatus({ status: 'PENDING' });
+      await jobService.triggerFullJob(startDate, endDate, alpha, gridFee);
+      setShowTriggerForm(false);
+      fetchJobs();
     } catch (error) {
-      console.error(error);
-      alert('Failed to trigger optimization');
+      console.error('Failed to trigger job:', error);
+      alert('Failed to trigger job');
+    } finally {
+      setSubmitting(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => {
-    let interval: any;
-    if (taskId && status?.status !== 'SUCCESS' && status?.status !== 'FAILURE') {
-      interval = setInterval(async () => {
-        try {
-          const data = await optimizationService.getStatus(taskId);
-          setStatus(data);
-          if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
-            clearInterval(interval);
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      }, 2000);
-    }
-    return () => clearInterval(interval);
-  }, [taskId, status]);
-
-  const sectionStyle: React.CSSProperties = {
-    marginBottom: '2rem',
+  const cardStyle: React.CSSProperties = {
+    background: '#fff',
+    border: '1px solid #e1e4e8',
+    borderRadius: '12px',
     padding: '1.5rem',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    background: '#f9f9f9'
+    marginBottom: '1rem',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    cursor: 'pointer',
+    transition: 'transform 0.1s ease',
   };
 
-  const inputGroupStyle: React.CSSProperties = {
-    marginBottom: '1rem'
+  const statusBadgeStyle = (status: string): React.CSSProperties => {
+    let color = '#666';
+    let bg = '#eee';
+    if (status === 'SUCCESS') { color = '#155724'; bg = '#d4edda'; }
+    if (status === 'FAILURE') { color = '#721c24'; bg = '#f8d7da'; }
+    if (status === 'RUNNING') { color = '#856404'; bg = '#fff3cd'; }
+    
+    return {
+      padding: '0.25rem 0.75rem',
+      borderRadius: '20px',
+      fontSize: '0.85rem',
+      fontWeight: 'bold',
+      backgroundColor: bg,
+      color: color,
+      textTransform: 'uppercase'
+    };
   };
 
-  const labelStyle: React.CSSProperties = {
-    display: 'inline-block',
-    width: '120px',
-    fontWeight: 'bold'
+  const modalOverlayStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    padding: '2rem'
+  };
+
+  const modalContentStyle: React.CSSProperties = {
+    background: '#f5f7f9',
+    width: '100%',
+    maxWidth: '1200px',
+    maxHeight: '90vh',
+    borderRadius: '16px',
+    overflowY: 'auto',
+    position: 'relative',
+    padding: '2rem',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
   };
 
   return (
-    <div>
-      <h1>Jobs & Operations</h1>
-      <p>Use this page to manually trigger system tasks and monitor their progress.</p>
-
-      <section style={sectionStyle}>
-        <h2>1. Data Management</h2>
-        <p>Fetch energy market data (ENTSO-E) and solar forecasts (Open-Meteo).</p>
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>Start Date:</label>
-          <input 
-            type="date" 
-            value={startDate} 
-            onChange={(e) => setStartDate(e.target.value)} 
-            style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-        </div>
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>End Date:</label>
-          <input 
-            type="date" 
-            value={endDate} 
-            onChange={(e) => setEndDate(e.target.value)} 
-            style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-        </div>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#2d3748' }}>
+        <span>🔋</span> BatteryOpt Overview
+      </div>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1>Operations</h1>
         <button 
-          onClick={handleIngest} 
-          style={{ padding: '0.6rem 1.2rem', cursor: 'pointer', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
-        >
-          {ingestStatus?.status === 'RUNNING' ? 'Ingesting...' : 'Trigger Data Ingestion'}
-        </button>
-
-        {ingestStatus && (
-          <div style={{ marginTop: '1rem', padding: '1rem', background: '#fff', border: '1px solid #ccc', borderRadius: '4px' }}>
-            <p><strong>Status:</strong> 
-              <span style={{ 
-                marginLeft: '0.5rem', 
-                padding: '0.2rem 0.5rem', 
-                borderRadius: '4px', 
-                background: ingestStatus.status === 'SUCCESS' ? '#d4edda' : ingestStatus.status === 'FAILURE' ? '#f8d7da' : '#fff3cd',
-                color: ingestStatus.status === 'SUCCESS' ? '#155724' : ingestStatus.status === 'FAILURE' ? '#721c24' : '#856404'
-              }}>
-                {ingestStatus.status}
-              </span>
-            </p>
-            <p>{ingestStatus.message}</p>
-          </div>
-        )}
-      </section>
-
-      <section style={sectionStyle}>
-        <h2>2. Battery Optimization</h2>
-        <p>Run the Pyomo optimization engine (IPOPT) to generate a dispatch plan.</p>
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>Alpha:</label>
-          <input 
-            type="number" 
-            step="0.001" 
-            value={alpha} 
-            onChange={(e) => setAlpha(Number(e.target.value))} 
-            style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <small style={{ marginLeft: '1rem', color: '#666' }}>Degradation penalty</small>
-        </div>
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>Grid Fee:</label>
-          <input 
-            type="number" 
-            step="0.01" 
-            value={gridFee} 
-            onChange={(e) => setGridFee(Number(e.target.value))} 
-            style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <small style={{ marginLeft: '1rem', color: '#666' }}>USD/kWh</small>
-        </div>
-        <button 
-          onClick={handleOptimize} 
-          disabled={loading}
-          style={{ 
-            padding: '0.6rem 1.2rem', 
-            cursor: loading ? 'not-allowed' : 'pointer', 
-            background: loading ? '#ccc' : '#28a745', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '4px' 
+          onClick={() => setShowTriggerForm(!showTriggerForm)}
+          style={{
+            padding: '0.6rem 1.2rem',
+            background: '#3498db',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
           }}
         >
-          {loading ? 'Submitting...' : 'Run Optimization Job'}
+          {showTriggerForm ? 'Cancel' : 'Trigger New Job'}
         </button>
+      </header>
 
-        {taskId && (
-          <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#fff', border: '1px solid #ccc', borderRadius: '4px' }}>
-            <h3 style={{ marginTop: 0 }}>Optimization Status</h3>
-            <p><strong>Task ID:</strong> <code style={{ background: '#eee', padding: '0.2rem' }}>{taskId}</code></p>
-            <p>
-              <strong>Status:</strong> 
-              <span style={{ 
-                marginLeft: '0.5rem', 
-                padding: '0.2rem 0.5rem', 
-                borderRadius: '4px', 
-                background: status?.status === 'SUCCESS' ? '#d4edda' : status?.status === 'FAILURE' ? '#f8d7da' : '#fff3cd',
-                color: status?.status === 'SUCCESS' ? '#155724' : status?.status === 'FAILURE' ? '#721c24' : '#856404'
-              }}>
-                {status?.status || 'PENDING'}
-              </span>
-            </p>
-            {status?.error && (
-              <div style={{ color: '#721c24', background: '#f8d7da', padding: '0.5rem', borderRadius: '4px' }}>
-                <strong>Error:</strong> {status.error}
-              </div>
-            )}
-            {status?.result && (
-              <div style={{ marginTop: '1rem' }}>
-                <strong>Result:</strong>
-                <pre style={{ background: '#eee', padding: '0.5rem', borderRadius: '4px', overflowX: 'auto' }}>
-                  {JSON.stringify(status.result, null, 2)}
-                </pre>
-              </div>
-            )}
+      {showTriggerForm && (
+        <form onSubmit={handleTrigger} style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #dee2e6' }}>
+          <h3>Configure Integrated Job</h3>
+          <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>This will trigger both data ingestion and battery optimization for the selected range.</p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Start Date</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} required />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>End Date</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} required />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Alpha (Degradation)</label>
+              <input type="number" step="0.0001" value={alpha} onChange={e => setAlpha(Number(e.target.value))} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Grid Fee (USD/kWh)</label>
+              <input type="number" step="0.01" value={gridFee} onChange={e => setGridFee(Number(e.target.value))} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+            </div>
           </div>
-        )}
-      </section>
+          
+          <button 
+            type="submit" 
+            disabled={submitting}
+            style={{ 
+              width: '100%', 
+              padding: '0.8rem', 
+              background: '#2ecc71', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px', 
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              fontSize: '1rem'
+            }}
+          >
+            {submitting ? 'Starting...' : 'Run Ingestion + Optimization'}
+          </button>
+        </form>
+      )}
+
+      {loading && <p>Loading jobs...</p>}
+      {!loading && jobs.length === 0 && <p>No jobs found. Trigger your first job!</p>}
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {jobs.map(job => (
+          <div 
+            key={job.id} 
+            style={{
+              ...cardStyle,
+              borderLeft: selectedJob?.id === job.id ? '6px solid #3498db' : '1px solid #e1e4e8'
+            }}
+            onClick={() => job.status === 'SUCCESS' && setSelectedJob(job)}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Job #{job.id}</span>
+                <span style={statusBadgeStyle(job.status)}>{job.status}</span>
+              </div>
+              <div style={{ color: '#666', fontSize: '0.9rem' }}>
+                <span>📅 {new Date(job.start_date).toLocaleDateString()} - {new Date(job.end_date).toLocaleDateString()}</span>
+                <span style={{ marginLeft: '1.5rem' }}>⚙️ α={job.alpha}, fee=${job.grid_fee}</span>
+              </div>
+              <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#999' }}>
+                Created: {new Date(job.created_at).toLocaleString()}
+              </div>
+            </div>
+            
+            <div style={{ color: job.status === 'SUCCESS' ? '#3498db' : '#ccc', fontWeight: 'bold' }}>
+              {job.status === 'SUCCESS' ? 'View Analysis →' : 'Wait for success...'}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dashboard Modal */}
+      {selectedJob && (
+        <div style={modalOverlayStyle} onClick={() => setSelectedJob(null)}>
+          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Analysis for Job #{selectedJob.id}</h2>
+                <p style={{ color: '#666', margin: 0 }}>
+                  Range: {new Date(selectedJob.start_date).toLocaleDateString()} - {new Date(selectedJob.end_date).toLocaleDateString()}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedJob(null)}
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  background: '#e74c3c', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Close Analysis
+              </button>
+            </div>
+            
+            <Dashboard 
+              startDate={selectedJob.start_date.split('T')[0]} 
+              endDate={selectedJob.end_date.split('T')[0]} 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

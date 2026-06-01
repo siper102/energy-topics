@@ -15,8 +15,9 @@ export const dataService = {
     const response = await api.get('/data/ingest/status');
     return response.data;
   },
-  getDashboardData: async () => {
-    const response = await api.get('/data/dashboard-data');
+  getDashboardData: async (startDate?: string, endDate?: string) => {
+    const params = startDate && endDate ? { start_date: startDate, end_date: endDate } : {};
+    const response = await api.get('/data/dashboard-data', { params });
     return response.data;
   },
 };
@@ -28,6 +29,17 @@ export const optimizationService = {
   },
   getStatus: async (taskId: string) => {
     const response = await api.get(`/optimization/status/${taskId}`);
+    return response.data;
+  },
+};
+
+export const jobService = {
+  listJobs: async () => {
+    const response = await api.get('/jobs');
+    return response.data;
+  },
+  triggerFullJob: async (startDate: string, endDate: string, alpha: number = 0.001, gridFee: number = 0.01) => {
+    const response = await api.post('/jobs/trigger-full', { start_date: startDate, end_date: endDate, alpha, grid_fee: gridFee });
     return response.data;
   },
 };

@@ -1,21 +1,15 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Dashboard from './pages/Dashboard';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Jobs from './pages/Jobs';
 
 const App: React.FC = () => {
   return (
     <Router>
-      <div style={{ fontFamily: 'sans-serif' }}>
-        <Navbar />
-        <div style={{ padding: '0 2rem' }}>
-          <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/jobs" element={<Jobs />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </div>
+      <div style={{ fontFamily: 'sans-serif', background: '#f5f7f9', minHeight: '100vh' }}>
+        <Routes>
+          <Route path="/" element={<Jobs />} />
+          <Route path="*" element={<Jobs />} />
+        </Routes>
       </div>
     </Router>
   );
