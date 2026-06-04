@@ -11,9 +11,9 @@ DB_DSN = os.getenv(
 )
 
 
-def load_data(battery_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
+def load_data(setup_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
     """
-    Fetches the latest telemetry and physical battery parameters 
+    Fetches the latest telemetry and physical parameters for a specific setup
     from TimescaleDB.
     """
     
@@ -21,8 +21,11 @@ def load_data(battery_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
     with psycopg.connect(DB_DSN) as conn:
         
         # 1. Fetch Time-Series Data (Telemetry)
-        # We query the last 24 hours of data
-        query = """
+        # We query the last 24 hours of data for the specific setup
+        where_clause = "WHERE setup_id = %s" if setup_id else ""
+        params_telemetry = (setup_id,) if setup_id else ()
+        
+        query = f"""
         SELECT 
             time, 
             load_kw, 
@@ -30,21 +33,22 @@ def load_data(battery_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
             price_buy_usd_per_kwh as price_buy, 
             price_sell_usd_per_kwh as price_sell
         FROM sensor_telemetry
+        {where_clause}
         ORDER BY time ASC;
         """
         
         # pd.read_sql returns a DataFrame perfectly indexed by 'time'
-        df_telemetry = pd.read_sql(query, conn, index_col='time')
+        df_telemetry = pd.read_sql(query, conn, params=params_telemetry, index_col='time')
         
         if df_telemetry.empty:
-            raise ValueError("No time-series data found in 'sensor_telemetry' table. Please run data ingestion first.")
+            raise ValueError(f"No time-series data found for setup_id {setup_id}. Please run data ingestion first.")
         
         if len(df_telemetry) < 2:
-            raise ValueError(f"Not enough data points found ({len(df_telemetry)}) in 'sensor_telemetry'. At least 2 points are required for optimization.")
+            raise ValueError(f"Not enough data points found ({len(df_telemetry)}) for setup_id {setup_id}. At least 2 points are required for optimization.")
         
-        # 2. Fetch Static Battery Parameters
+        # 2. Fetch Static Setup Parameters
         with conn.cursor() as cur:
-            if battery_id:
+            if setup_id:
                 cur.execute("""
                     SELECT 
                         max_capacity_kwh, 
@@ -52,9 +56,9 @@ def load_data(battery_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
                         efficiency_charge, 
                         efficiency_discharge, 
                         initial_soc_kwh 
-                    FROM battery_parameters 
+                    FROM setups 
                     WHERE id = %s;
-                """, (battery_id,))
+                """, (setup_id,))
             else:
                 cur.execute("""
                     SELECT 
@@ -63,13 +67,13 @@ def load_data(battery_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
                         efficiency_charge, 
                         efficiency_discharge, 
                         initial_soc_kwh 
-                    FROM battery_parameters 
+                    FROM setups 
                     LIMIT 1;
                 """)
                 
             row = cur.fetchone()
             if not row:
-                raise ValueError(f"No battery parameters found in database (ID: {battery_id}).")
+                raise ValueError(f"No setup found in database (ID: {setup_id}).")
                 
             params = BatteryParams(
                 max_capacity_kwh=float(row[0]),
@@ -81,28 +85,32 @@ def load_data(battery_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
 
     return df_telemetry, params
 
-def clear_dispatch_plans():
-    """Deletes all existing dispatch plans from the database."""
+def clear_dispatch_plans(setup_id: int = None):
+    """Deletes dispatch plans from the database, optionally filtered by setup_id."""
     with psycopg.connect(DB_DSN) as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM dispatch_plans;")
+            if setup_id:
+                cur.execute("DELETE FROM dispatch_plans WHERE setup_id = %s;", (setup_id,))
+            else:
+                cur.execute("DELETE FROM dispatch_plans;")
             conn.commit()
-            print("🧹 Cleared existing dispatch plans from DB.")
+            print(f"🧹 Cleared existing dispatch plans (setup_id: {setup_id}) from DB.")
 
-def get_available_batteries() -> pd.DataFrame:
-    """Fetches all available batteries from the database."""
+def get_available_setups() -> pd.DataFrame:
+    """Fetches all available setups from the database."""
     with psycopg.connect(DB_DSN) as conn:
-        query = "SELECT id, max_capacity_kwh, max_power_kw FROM battery_parameters ORDER BY id ASC;"
+        query = "SELECT id, name, max_capacity_kwh, max_power_kw FROM setups ORDER BY id ASC;"
         return pd.read_sql(query, conn)
 
-def save_data(result: pd.DataFrame, table_name: str = "dispatch_plans"):
+def save_data(result: pd.DataFrame, setup_id: int, table_name: str = "dispatch_plans"):
     """Saves the optimized dispatch plan to TimescaleDB."""    
     # 1. Reset index. Since the index is already named "time", 
     # Pandas creates a column named "time" automatically!
     df_reset = result.reset_index()
+    df_reset['setup_id'] = setup_id
         
     # 2. Defensively order AND rename columns to match the Database schema
-    df_db_ready = df_reset[['time', 'p_charge_kw', 'p_discharge_kw', 'soc_kwh', 'p_buy_kw', 'p_sell_kw']].rename(
+    df_db_ready = df_reset[['time', 'setup_id', 'p_charge_kw', 'p_discharge_kw', 'soc_kwh', 'p_buy_kw', 'p_sell_kw']].rename(
         columns={
             'time': 'target_time',
             'p_charge_kw': 'cmd_charge_kw',
@@ -119,7 +127,15 @@ def save_data(result: pd.DataFrame, table_name: str = "dispatch_plans"):
     try:
         with psycopg.connect(DB_DSN) as conn:
             with conn.cursor() as cur:
-                # 4. DYNAMIC SQL MAGIC
+                # 4. UPSERT STRATEGY: Delete existing records for this setup and these timestamps
+                # This ensures we can re-run jobs without unique constraint violations.
+                timestamps = df_db_ready['target_time'].tolist()
+                cur.execute(
+                    "DELETE FROM dispatch_plans WHERE setup_id = %s AND target_time = ANY(%s)",
+                    (setup_id, timestamps)
+                )
+
+                # 5. DYNAMIC SQL MAGIC
                 columns_str = ", ".join(df_db_ready.columns)
                 copy_query = f"COPY {table_name} ({columns_str}) FROM STDIN"
                     

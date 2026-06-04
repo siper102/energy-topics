@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { dataService } from '../services/api';
+import { useSetups } from '../context/SetupContext';
 import {
   LineChart,
   Line,
@@ -51,14 +52,16 @@ const SkeletonCard: React.FC<{ height?: number; width?: string }> = ({ height = 
 );
 
 const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
+  const { activeSetup } = useSetups();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
+    if (!activeSetup) return;
     setLoading(true);
     try {
-      const result = await dataService.getDashboardData(startDate, endDate);
+      const result = await dataService.getDashboardData(activeSetup.id, startDate, endDate);
       
       let cumulativeProfit = 0;
       const combined = result.telemetry.map((t: any) => {
@@ -91,7 +94,7 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
 
   useEffect(() => {
     fetchData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, activeSetup]);
 
   const metrics = useMemo(() => {
     if (!data) return null;
@@ -124,7 +127,17 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
 
   if (loading) return (
     <div style={{ width: '100%' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(3, 1fr)', 
+        gap: '1rem', 
+        marginBottom: '2rem',
+        position: 'sticky',
+        top: '-1rem',
+        zIndex: 10,
+        backgroundColor: '#f5f7f9',
+        padding: '1rem 0'
+      }}>
         <SkeletonCard height={80} />
         <SkeletonCard height={80} />
         <SkeletonCard height={80} />
@@ -154,7 +167,17 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
       `}</style>
       
       {/* Metrics Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: '1rem', 
+        marginBottom: '2rem',
+        position: 'sticky',
+        top: '-1rem',
+        zIndex: 10,
+        backgroundColor: '#f5f7f9',
+        padding: '1rem 0'
+      }}>
         <div style={metricCardStyle}>
           <div style={{ fontSize: '0.8rem', color: '#666' }}>Grid Buy Cost</div>
           <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#e53e3e' }}>${metrics?.totalBuyCost.toFixed(2)}</div>
@@ -241,23 +264,43 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate }) => {
         </section>
       </div>
 
-      {/* Dispatch Commands */}
-      <section style={chartCardStyle}>
-        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Dispatch Commands (kW)</h2>
-        <div style={{ width: '100%', height: 250 }}>
-          <ResponsiveContainer>
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_COLOR} />
-              <XAxis dataKey="formattedTime" stroke={AXIS_COLOR} fontSize={10} interval={Math.floor(data.length / 6)} />
-              <YAxis stroke={AXIS_COLOR} fontSize={10} />
-              <Tooltip />
-              <ReferenceLine y={0} stroke="#000" />
-              <Bar dataKey="cmd_charge_kw" fill="#3182ce" name="Charge" />
-              <Bar dataKey="neg_cmd_discharge_kw" fill="#ed8936" name="Discharge" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+        {/* Dispatch Commands */}
+        <section style={chartCardStyle}>
+          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Dispatch Commands (kW)</h2>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer>
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_COLOR} />
+                <XAxis dataKey="formattedTime" stroke={AXIS_COLOR} fontSize={10} interval={Math.floor(data.length / 3)} />
+                <YAxis stroke={AXIS_COLOR} fontSize={10} />
+                <Tooltip />
+                <ReferenceLine y={0} stroke="#000" />
+                <Bar dataKey="cmd_charge_kw" fill="#3182ce" name="Charge" />
+                <Bar dataKey="neg_cmd_discharge_kw" fill="#ed8936" name="Discharge" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        {/* Grid Buy/Sell Orders */}
+        <section style={chartCardStyle}>
+          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Grid Buy/Sell Orders (kW)</h2>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer>
+              <AreaChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_COLOR} />
+                <XAxis dataKey="formattedTime" stroke={AXIS_COLOR} fontSize={10} interval={Math.floor(data.length / 3)} />
+                <YAxis stroke={AXIS_COLOR} fontSize={10} />
+                <Tooltip />
+                <ReferenceLine y={0} stroke="#333" strokeWidth={1} />
+                <Area type="monotone" dataKey="expected_grid_buy_kw" stroke="#e53e3e" fill="#e53e3e" fillOpacity={0.1} name="Grid Buy" />
+                <Area type="monotone" dataKey="neg_expected_grid_sell_kw" stroke="#38a169" fill="#38a169" fillOpacity={0.1} name="Grid Sell" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
     </div>
   );
 };

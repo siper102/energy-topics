@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { jobService } from '../services/api';
 import Dashboard from './Dashboard';
+import { useNavigate } from 'react-router-dom';
+import { useSetups } from '../context/SetupContext';
 
 interface Job {
   id: number;
@@ -13,9 +15,11 @@ interface Job {
   created_at: string;
   finished_at: string | null;
   error_message: string | null;
+  net_profit?: number | null;
 }
 
 const Jobs: React.FC = () => {
+  const { activeSetup, loading: setupLoading } = useSetups();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTriggerForm, setShowTriggerForm] = useState(false);
@@ -29,9 +33,12 @@ const Jobs: React.FC = () => {
   const [gridFee, setGridFee] = useState(0.01);
   const [submitting, setSubmitting] = useState(false);
 
+  const navigate = useNavigate();
+
   const fetchJobs = async () => {
+    if (!activeSetup) return;
     try {
-      const data = await jobService.listJobs();
+      const data = await jobService.listJobs(activeSetup.id);
       setJobs(data);
     } catch (error) {
       console.error('Failed to fetch jobs:', error);
@@ -40,11 +47,12 @@ const Jobs: React.FC = () => {
     }
   };
 
+
   useEffect(() => {
     fetchJobs();
     const interval = setInterval(fetchJobs, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeSetup]);
 
   const handleCloseModal = useCallback(() => {
     if (!selectedJob || isClosing) return;
@@ -73,9 +81,10 @@ const Jobs: React.FC = () => {
 
   const handleTrigger = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeSetup) return;
     setSubmitting(true);
     try {
-      await jobService.triggerFullJob(startDate, endDate, alpha, gridFee);
+      await jobService.triggerFullJob(startDate, endDate, activeSetup.id, alpha, gridFee);
       setShowTriggerForm(false);
       fetchJobs();
     } catch (error) {
@@ -173,31 +182,82 @@ const Jobs: React.FC = () => {
         }
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#2d3748' }}>
-        <span>🔋</span> BatteryOpt Overview
-      </div>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1>Operations</h1>
-        <button 
-          onClick={() => setShowTriggerForm(!showTriggerForm)}
-          style={{
-            padding: '0.6rem 1.2rem',
-            background: '#3498db',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
-        >
-          {showTriggerForm ? 'Cancel' : 'Trigger New Job'}
-        </button>
-      </header>
+      {setupLoading ? (
+        <p>Loading setups...</p>
+      ) : !activeSetup ? (
+        <div style={{ textAlign: 'center', padding: '3rem', background: '#fff', borderRadius: '12px', border: '1px solid #e1e4e8' }}>
+          <h2>No Setup Active</h2>
+          <p>Please create or select a setup to view operations.</p>
+        </div>
+      ) : (
+        <>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div>
+              <h1 style={{ margin: 0 }}>Operations: {activeSetup.name}</h1>
+              <p style={{ color: '#666', margin: 0 }}>Manage data ingestion and optimization for this setup.</p>
+            </div>
+            <button 
+              onClick={() => setShowTriggerForm(!showTriggerForm)}
+              style={{
+                padding: '0.6rem 1.2rem',
+                background: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              {showTriggerForm ? 'Cancel' : 'Trigger New Job'}
+            </button>
+          </header>
 
-      {showTriggerForm && (
-        <form onSubmit={handleTrigger} style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #dee2e6' }}>
-          <h3>Configure Integrated Job</h3>
-          <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>This will trigger both data ingestion and battery optimization for the selected range.</p>
+          {/* Setup Parameters Overview - Hidden when creating a new job to focus on inputs */}
+          {!showTriggerForm && (
+            <section style={{ 
+              background: '#fff', 
+              border: '1px solid #e1e4e8', 
+              borderRadius: '12px', 
+              padding: '1.25rem', 
+              marginBottom: '2rem',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+            }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Setup Configuration
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Battery Capacity</div>
+                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_capacity_kwh} kWh</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Max Power</div>
+                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_power_kw} kW</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Efficiency (C/D)</div>
+                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.efficiency_charge * 100}% / {activeSetup.efficiency_discharge * 100}%</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Solar Peak</div>
+                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.peak_power_kw} kWp</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Location</div>
+                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.lat}, {activeSetup.lon}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Orientation</div>
+                  <div style={{ fontWeight: '600', color: '#2d3748' }}>Tilt: {activeSetup.tilt}°, Azi: {activeSetup.azimuth}°</div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {showTriggerForm && (
+            <form onSubmit={handleTrigger} style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #dee2e6' }}>
+              <h3>Configure Integrated Job ({activeSetup.name})</h3>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>This will trigger both data ingestion and battery optimization for the selected range using this setup's parameters.</p>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
             <div>
@@ -261,13 +321,45 @@ const Jobs: React.FC = () => {
                 <span>📅 {new Date(job.start_date).toLocaleDateString()} - {new Date(job.end_date).toLocaleDateString()}</span>
                 <span style={{ marginLeft: '1.5rem' }}>⚙️ α={job.alpha}, fee=${job.grid_fee}</span>
               </div>
+              {job.status === 'FAILURE' && job.error_message && (
+                <div style={{ 
+                  marginTop: '0.75rem', 
+                  padding: '0.5rem 0.75rem', 
+                  background: '#fff5f5', 
+                  border: '1px solid #feb2b2', 
+                  borderRadius: '6px',
+                  color: '#c53030',
+                  fontSize: '0.85rem',
+                  maxWidth: '80%'
+                }}>
+                  <strong>Error:</strong> {job.error_message}
+                </div>
+              )}
               <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#999' }}>
                 Created: {new Date(job.created_at).toLocaleString()}
               </div>
             </div>
             
-            <div style={{ color: job.status === 'SUCCESS' ? '#3498db' : '#ccc', fontWeight: 'bold' }}>
-              {job.status === 'SUCCESS' ? 'View Analysis →' : 'Wait for success...'}
+            <div style={{ textAlign: 'right' }}>
+              {job.net_profit !== undefined && job.net_profit !== null && (
+                <div style={{ 
+                  fontSize: '0.95rem', 
+                  fontWeight: '600', 
+                  color: job.net_profit >= 0 ? '#2ecc71' : '#e74c3c',
+                  marginBottom: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  gap: '0.25rem'
+                }}>
+                  <span style={{ color: '#666', fontWeight: 'normal', marginRight: '0.25rem' }}>Net Profit:</span>
+                  <span style={{ fontSize: '1.1rem' }}>{job.net_profit >= 0 ? '↑' : '↓'}</span>
+                  <span>${Math.abs(job.net_profit).toFixed(2)}</span>
+                </div>
+              )}
+              <div style={{ color: job.status === 'SUCCESS' ? '#3498db' : (job.status === 'FAILURE' ? '#e53e3e' : '#ccc'), fontWeight: 'bold' }}>
+                {job.status === 'SUCCESS' ? 'View Analysis →' : (job.status === 'FAILURE' ? 'Job Failed' : 'Wait for success...')}
+              </div>
             </div>
           </div>
         ))}
@@ -306,6 +398,8 @@ const Jobs: React.FC = () => {
             />
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

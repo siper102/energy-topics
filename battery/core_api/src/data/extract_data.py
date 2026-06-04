@@ -49,19 +49,20 @@ class SensorETLPipeline:
             logger.error(f"Failed to extract and merge data: {e}")
             raise
 
-    def load(self, df: pd.DataFrame, table_name: str = "sensor_telemetry"):
+    def load(self, df: pd.DataFrame, setup_id: int, table_name: str = "sensor_telemetry"):
         """Loads data into TimescaleDB using ultra-fast COPY."""
         if df.empty:
             logger.warning("DataFrame is empty. Nothing to load.")
             return
 
-        logger.info(f"Loading {len(df)} rows into {table_name}...")
+        logger.info(f"Loading {len(df)} rows into {table_name} for setup_id {setup_id}...")
         
         df_reset = df.reset_index()
         df_reset.rename(columns={'index': 'time'}, inplace=True)
+        df_reset['setup_id'] = setup_id
         
-        # Match schema: time, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh
-        df_db_ready = df_reset[['time', 'load_kw', 'solar_kw', 'price_buy', 'price_sell']].rename(
+        # Match schema: time, setup_id, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh
+        df_db_ready = df_reset[['time', 'setup_id', 'load_kw', 'solar_kw', 'price_buy', 'price_sell']].rename(
             columns={
                 'price_buy': 'price_buy_usd_per_kwh',
                 'price_sell': 'price_sell_usd_per_kwh'
@@ -73,6 +74,13 @@ class SensorETLPipeline:
         try:
             with psycopg.connect(self.db_dsn) as conn:
                 with conn.cursor() as cur:
+                    # UPSERT STRATEGY: Delete existing records for this setup and these timestamps
+                    timestamps = df_db_ready['time'].tolist()
+                    cur.execute(
+                        "DELETE FROM sensor_telemetry WHERE setup_id = %s AND time = ANY(%s)",
+                        (setup_id, timestamps)
+                    )
+
                     columns_str = ", ".join(df_db_ready.columns)
                     copy_query = f"COPY {table_name} ({columns_str}) FROM STDIN"
                     
@@ -111,7 +119,7 @@ if __name__ == "__main__":
         lon=6.84, 
         peak_power_kw=5.0,  # 5.0 kWp is a standard size (approx. 12-15 physical panels)
         tilt=35,            # 30° to 45° is optimal for mid-latitudes to capture sun year-round
-        azimuth=180         # MANDATORY for Open-Meteo to face due South!
+        azimuth=0           # MANDATORY for Open-Meteo to face due South!
     )
     price_p = ENTSOEPriceProvider(API_KEY) 
     

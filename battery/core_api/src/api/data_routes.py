@@ -17,11 +17,12 @@ logger = logging.getLogger(__name__)
 class IngestRequest(BaseModel):
     start_date: str  # YYYY-MM-DD
     end_date: str    # YYYY-MM-DD
+    setup_id: int
 
 # Global state for ingestion status (simplification for step-by-step)
 ingestion_status = {"status": "IDLE", "message": "", "last_run": None}
 
-def run_ingestion(start_date: str, end_date: str):
+def run_ingestion(start_date: str, end_date: str, setup_id: int):
     """Background task to run the ETL pipeline."""
     global ingestion_status
     ingestion_status["status"] = "RUNNING"
@@ -38,10 +39,26 @@ def run_ingestion(start_date: str, end_date: str):
         return
 
     try:
+        # Fetch setup parameters
+        with psycopg.connect(DB_DSN) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT lat, lon, peak_power_kw, tilt, azimuth FROM setups WHERE id = %s", (setup_id,))
+                setup_row = cur.fetchone()
+                if not setup_row:
+                    raise ValueError(f"Setup ID {setup_id} not found")
+                
+                lat, lon, peak_power, tilt, azimuth = setup_row
+
         pipeline = SensorETLPipeline(
             db_dsn=DB_DSN,
             load_provider=MockLoadProvider(),
-            solar_provider=OpenMeteoSolarProvider(lat=51.26, lon=6.84, peak_power_kw=5.0),
+            solar_provider=OpenMeteoSolarProvider(
+                lat=float(lat), 
+                lon=float(lon), 
+                peak_power_kw=float(peak_power),
+                tilt=float(tilt),
+                azimuth=float(azimuth)
+            ),
             price_provider=ENTSOEPriceProvider(API_KEY)
         )
         
@@ -52,18 +69,18 @@ def run_ingestion(start_date: str, end_date: str):
         # Adjust end to the end of that day (23:59:59) for a full range
         end = end.replace(hour=23, minute=59, second=59)
         
-        logger.info(f"Triggering ingestion: {start} to {end}")
+        logger.info(f"Triggering ingestion for setup {setup_id}: {start} to {end}")
         data = pipeline.extract(start, end)
         
         if data.empty:
-            msg = f"Data extraction returned 0 records for range {start_date} to {end_date}."
+            msg = f"Data extraction returned 0 records for setup {setup_id} in range {start_date} to {end_date}."
             logger.warning(msg)
             ingestion_status["status"] = "FAILURE"
             ingestion_status["message"] = msg
             return
 
-        pipeline.load(data)
-        success_msg = f"Successfully ingested {len(data)} records for {start_date} to {end_date}."
+        pipeline.load(data, setup_id=setup_id)
+        success_msg = f"Successfully ingested {len(data)} records for setup {setup_id} ({start_date} to {end_date})."
         logger.info(success_msg)
         ingestion_status["status"] = "SUCCESS"
         ingestion_status["message"] = success_msg
@@ -84,45 +101,47 @@ async def trigger_ingestion(request: IngestRequest, background_tasks: Background
     """
     Triggers the data extraction and loading pipeline.
     """
-    background_tasks.add_task(run_ingestion, request.start_date, request.end_date)
+    background_tasks.add_task(run_ingestion, request.start_date, request.end_date, request.setup_id)
     return {"message": "Data ingestion triggered in the background."}
 
 @router.get("/dashboard-data")
-async def get_dashboard_data(start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def get_dashboard_data(setup_id: int, start_date: Optional[str] = None, end_date: Optional[str] = None):
     """
     Fetches the latest telemetry and dispatch plans for the dashboard.
-    Optional filtering by date range.
+    Filtering by setup_id is mandatory. Optional filtering by date range.
     """
     DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@localhost:5432/battery")
     
     try:
         with psycopg.connect(DB_DSN) as conn:
-            # Build queries with optional filtering
-            where_clause_telemetry = ""
-            where_clause_plans = ""
-            params = []
+            # Build queries with setup filtering
+            where_telemetry = "WHERE setup_id = %s"
+            where_plans = "WHERE setup_id = %s"
+            params_telemetry = [setup_id]
+            params_plans = [setup_id]
             
             if start_date and end_date:
-                where_clause_telemetry = "WHERE time >= %s AND time <= %s"
-                where_clause_plans = "WHERE target_time >= %s AND target_time <= %s"
-                params = [start_date, end_date]
+                where_telemetry += " AND time >= %s AND time <= %s"
+                where_plans += " AND target_time >= %s AND target_time <= %s"
+                params_telemetry.extend([start_date, end_date])
+                params_plans.extend([start_date, end_date])
             
             query_telemetry = f"""
             SELECT time, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh 
             FROM sensor_telemetry 
-            {where_clause_telemetry}
+            {where_telemetry}
             ORDER BY time ASC;
             """
             
             query_plans = f"""
             SELECT target_time, cmd_charge_kw, cmd_discharge_kw, expected_soc_kwh, expected_grid_buy_kw, expected_grid_sell_kw
             FROM dispatch_plans
-            {where_clause_plans}
+            {where_plans}
             ORDER BY target_time ASC;
             """
             
-            df_telemetry = pd.read_sql(query_telemetry, conn, params=params)
-            df_plans = pd.read_sql(query_plans, conn, params=params)
+            df_telemetry = pd.read_sql(query_telemetry, conn, params=params_telemetry)
+            df_plans = pd.read_sql(query_plans, conn, params=params_plans)
             
             # Merge on time
             df_telemetry['time'] = pd.to_datetime(df_telemetry['time'])

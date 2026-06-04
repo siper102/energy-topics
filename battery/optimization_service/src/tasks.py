@@ -5,18 +5,18 @@ from optimization.optimization_pipeline import OptimizationPipeline, Hyperparame
 logger = logging.getLogger(__name__)
 
 @celery_app.task(name="tasks.run_optimization_task", bind=True)
-def run_optimization_task(self, alpha: float, grid_fee: float):
+def run_optimization_task(self, alpha: float, grid_fee: float, setup_id: int):
     """
     Celery task that wraps the existing optimization pipeline.
     """
-    logger.info(f"Starting optimization task with alpha={alpha}, grid_fee={grid_fee}")
+    logger.info(f"Starting optimization task for setup_id={setup_id} with alpha={alpha}, grid_fee={grid_fee}")
     
     try:
         # 1. Initialize hyperparameters
         params = Hyperparameters(alpha=alpha, grid_fee=grid_fee)
         
         # 2. Initialize pipeline
-        pipeline = OptimizationPipeline(hyper_params=params)
+        pipeline = OptimizationPipeline(hyper_params=params, setup_id=setup_id)
         
         # 3. Execute
         pipeline.run_pipeline()

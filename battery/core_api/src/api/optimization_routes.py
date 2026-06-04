@@ -11,6 +11,7 @@ OPTIMIZATION_SERVICE_URL = os.getenv("OPTIMIZATION_SERVICE_URL", "http://optimiz
 class OptimizationRequest(BaseModel):
     alpha: float = 0.001
     grid_fee: float = 0.01
+    setup_id: int
 
 @router.post("/trigger")
 async def trigger_optimization(request: OptimizationRequest):
