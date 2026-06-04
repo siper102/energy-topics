@@ -26,6 +26,11 @@ const Jobs: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(7); // default weekly
+  const [total, setTotal] = useState(0);
+  
   // Form state
   const [startDate, setStartDate] = useState('2025-06-01');
   const [endDate, setEndDate] = useState('2025-06-05');
@@ -38,8 +43,9 @@ const Jobs: React.FC = () => {
   const fetchJobs = async () => {
     if (!activeSetup) return;
     try {
-      const data = await jobService.listJobs(activeSetup.id);
-      setJobs(data);
+      const data = await jobService.listJobs(activeSetup.id, page, pageSize);
+      setJobs(data.jobs);
+      setTotal(data.total);
     } catch (error) {
       console.error('Failed to fetch jobs:', error);
     } finally {
@@ -52,7 +58,7 @@ const Jobs: React.FC = () => {
     fetchJobs();
     const interval = setInterval(fetchJobs, 5000);
     return () => clearInterval(interval);
-  }, [activeSetup]);
+  }, [activeSetup, page, pageSize]);
 
   const handleCloseModal = useCallback(() => {
     if (!selectedJob || isClosing) return;
@@ -86,6 +92,7 @@ const Jobs: React.FC = () => {
     try {
       await jobService.triggerFullJob(startDate, endDate, activeSetup.id, alpha, gridFee);
       setShowTriggerForm(false);
+      setPage(1); // Reset to first page to see the new job
       fetchJobs();
     } catch (error) {
       console.error('Failed to trigger job:', error);
@@ -156,6 +163,8 @@ const Jobs: React.FC = () => {
     animation: isClosing ? 'modalSlideOut 0.25s ease-in forwards' : 'modalSlideIn 0.25s ease-out forwards'
   };
 
+  const totalPages = Math.ceil(total / pageSize);
+
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem' }}>
       <style>{`
@@ -179,6 +188,30 @@ const Jobs: React.FC = () => {
           transform: translateY(-2px);
           box-shadow: 0 4px 8px rgba(0,0,0,0.1);
           border-color: #3498db;
+        }
+        .pagination-btn:disabled {
+          background: #eee !important;
+          color: #999 !important;
+          cursor: not-allowed;
+        }
+        .view-toggle button {
+          padding: 0.5rem 1rem;
+          border: 1px solid #e1e4e8;
+          background: #fff;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        .view-toggle button.active {
+          background: #3498db;
+          color: #white;
+          border-color: #3498db;
+        }
+        .view-toggle button:first-child {
+          border-radius: 6px 0 0 6px;
+        }
+        .view-toggle button:last-child {
+          border-radius: 0 6px 6px 0;
         }
       `}</style>
 
@@ -226,31 +259,32 @@ const Jobs: React.FC = () => {
                 Setup Configuration
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem' }}>
-                <div>
+                <div title="The total amount of energy the battery can store in kilowatt-hours.">
                   <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Battery Capacity</div>
                   <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_capacity_kwh} kWh</div>
                 </div>
-                <div>
+                <div title="The maximum rate at which the battery can charge or discharge in kilowatts.">
                   <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Max Power</div>
                   <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_power_kw} kW</div>
                 </div>
-                <div>
+                <div title="The round-trip efficiency for charging and discharging. 95% means 5% of energy is lost as heat.">
                   <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Efficiency (C/D)</div>
                   <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.efficiency_charge * 100}% / {activeSetup.efficiency_discharge * 100}%</div>
                 </div>
-                <div>
+                <div title="The maximum potential output of the solar panels under ideal conditions in kilowatts peak.">
                   <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Solar Peak</div>
                   <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.peak_power_kw} kWp</div>
                 </div>
-                <div>
+                <div title="The geographic coordinates of the installation, used for solar irradiance calculation.">
                   <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Location</div>
                   <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.lat}, {activeSetup.lon}</div>
                 </div>
-                <div>
+                <div title="Tilt is the angle from the ground (0-90°). Azimuth is the direction (0° = South, -90° = East).">
                   <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Orientation</div>
                   <div style={{ fontWeight: '600', color: '#2d3748' }}>Tilt: {activeSetup.tilt}°, Azi: {activeSetup.azimuth}°</div>
                 </div>
               </div>
+
             </section>
           )}
 
@@ -298,10 +332,68 @@ const Jobs: React.FC = () => {
         </form>
       )}
 
-      {loading && <p>Loading jobs...</p>}
+      {/* View Options and Pagination Controls */}
+      {!showTriggerForm && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div className="view-toggle" style={{ display: 'flex' }}>
+            <button 
+              className={pageSize === 7 ? 'active' : ''} 
+              style={pageSize === 7 ? { background: '#3498db', color: 'white' } : {}}
+              onClick={() => { setPageSize(7); setPage(1); }}
+            >
+              Weekly View
+            </button>
+            <button 
+              className={pageSize === 30 ? 'active' : ''} 
+              style={pageSize === 30 ? { background: '#3498db', color: 'white' } : {}}
+              onClick={() => { setPageSize(30); setPage(1); }}
+            >
+              Monthly View
+            </button>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontSize: '0.9rem', color: '#666' }}>
+              Page {page} of {totalPages || 1} ({total} total jobs)
+            </span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className="pagination-btn"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  border: '1px solid #e1e4e8',
+                  borderRadius: '6px',
+                  background: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                Previous
+              </button>
+              <button 
+                className="pagination-btn"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage(p => p + 1)}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  border: '1px solid #e1e4e8',
+                  borderRadius: '6px',
+                  background: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading && jobs.length === 0 && <p>Loading jobs...</p>}
       {!loading && jobs.length === 0 && <p>No jobs found. Trigger your first job!</p>}
 
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s' }}>
         {jobs.map(job => (
           <div 
             key={job.id} 
@@ -364,6 +456,41 @@ const Jobs: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Bottom Pagination for convenience in Monthly View */}
+      {pageSize > 10 && totalPages > 1 && !showTriggerForm && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem', gap: '1rem', alignItems: 'center' }}>
+           <button 
+                className="pagination-btn"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  border: '1px solid #e1e4e8',
+                  borderRadius: '6px',
+                  background: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                Previous Page
+              </button>
+              <span style={{ fontWeight: '500' }}>{page} / {totalPages}</span>
+              <button 
+                className="pagination-btn"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage(p => p + 1)}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  border: '1px solid #e1e4e8',
+                  borderRadius: '6px',
+                  background: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                Next Page
+              </button>
+        </div>
+      )}
 
       {/* Dashboard Modal */}
       {selectedJob && (

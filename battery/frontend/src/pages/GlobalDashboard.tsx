@@ -69,7 +69,7 @@ const GlobalDashboard: React.FC = () => {
         ) : !activeSetup ? (
           <p>Please select a setup in the navbar.</p>
         ) : (
-          <Dashboard startDate={startDate} endDate={endDate} />
+          <Dashboard startDate={startDate} endDate={endDate} isGlobal={true} />
         )}
       </div>
     </div>

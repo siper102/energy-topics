@@ -53,8 +53,9 @@ export const optimizationService = {
 };
 
 export const jobService = {
-  listJobs: async (setupId?: number) => {
-    const params = setupId ? { setup_id: setupId } : {};
+  listJobs: async (setupId?: number, page: number = 1, pageSize: number = 7) => {
+    const params: any = { page, page_size: pageSize };
+    if (setupId) params.setup_id = setupId;
     const response = await api.get('/jobs', { params });
     return response.data;
   },

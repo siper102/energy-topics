@@ -35,31 +35,59 @@ class JobResponse(BaseModel):
     error_message: Optional[str] = None
     net_profit: Optional[float] = None
 
-@router.get("/", response_model=List[JobResponse])
-async def list_jobs(setup_id: Optional[int] = None):
+class PaginatedJobsResponse(BaseModel):
+    jobs: List[JobResponse]
+    total: int
+    page: int
+    page_size: int
+
+@router.get("/", response_model=PaginatedJobsResponse)
+async def list_jobs(setup_id: Optional[int] = None, page: int = 1, page_size: int = 7):
     try:
+        offset = (page - 1) * page_size
         with psycopg.connect(DB_DSN) as conn:
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 where_clause = "WHERE setup_id = %s" if setup_id else ""
                 params = (setup_id,) if setup_id else ()
                 
-                cur.execute(f"SELECT id, setup_id, type, status, start_date, end_date, alpha, grid_fee, created_at, finished_at, error_message FROM jobs {where_clause} ORDER BY start_date DESC NULLS LAST, created_at DESC", params)
+                # Get total count
+                cur.execute(f"SELECT COUNT(*) as total_count FROM jobs {where_clause}", params)
+                total = cur.fetchone()['total_count']
+
+                # Get paginated jobs
+                query = f"""
+                    SELECT id, setup_id, type, status, start_date, end_date, alpha, grid_fee, created_at, finished_at, error_message 
+                    FROM jobs {where_clause} 
+                    ORDER BY start_date DESC NULLS LAST, created_at DESC 
+                    LIMIT %s OFFSET %s
+                """
+                cur.execute(query, (*params, page_size, offset))
                 jobs = cur.fetchall()
                 
                 for job in jobs:
                     if job['status'] == 'SUCCESS' and job.get('start_date') and job.get('end_date') and job.get('setup_id'):
+                        # Align with data_routes.py: end_date should include the full day
+                        # Convert date to datetime at end of day
+                        real_end = datetime.combine(job['end_date'], datetime.max.time())
+                        
                         cur.execute("""
                             SELECT SUM(p.expected_grid_sell_kw * t.price_sell_usd_per_kwh - p.expected_grid_buy_kw * t.price_buy_usd_per_kwh) as profit
                             FROM dispatch_plans p
                             JOIN sensor_telemetry t ON p.target_time = t.time AND p.setup_id = t.setup_id
-                            WHERE p.setup_id = %s AND DATE(p.target_time) >= %s AND DATE(p.target_time) <= %s
-                        """, (job['setup_id'], job['start_date'], job['end_date']))
+                            WHERE p.setup_id = %s AND p.target_time >= %s AND p.target_time <= %s
+                        """, (job['setup_id'], job['start_date'], real_end))
                         res = cur.fetchone()
+                        # Note: This SUM assumes hourly data (delta_t = 1.0)
                         job['net_profit'] = float(res['profit']) if res and res['profit'] else 0.0
                     else:
                         job['net_profit'] = None
                         
-                return jobs
+                return {
+                    "jobs": jobs,
+                    "total": total,
+                    "page": page,
+                    "page_size": page_size
+                }
     except Exception as e:
         logger.error(f"Failed to list jobs: {e}")
         raise HTTPException(status_code=500, detail=str(e))

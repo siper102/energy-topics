@@ -121,10 +121,13 @@ async def get_dashboard_data(setup_id: int, start_date: Optional[str] = None, en
             params_plans = [setup_id]
             
             if start_date and end_date:
+                # Align with ingestion logic: end_date string should include the full day
+                # We append the time to ensure we catch everything until 23:59:59
+                real_end = f"{end_date} 23:59:59"
                 where_telemetry += " AND time >= %s AND time <= %s"
                 where_plans += " AND target_time >= %s AND target_time <= %s"
-                params_telemetry.extend([start_date, end_date])
-                params_plans.extend([start_date, end_date])
+                params_telemetry.extend([start_date, real_end])
+                params_plans.extend([start_date, real_end])
             
             query_telemetry = f"""
             SELECT time, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh 
