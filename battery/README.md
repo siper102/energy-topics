@@ -1,14 +1,64 @@
-# Battery Dispatch Optimization
+# 🔋 BatteryOpt: Battery Storage Microgrid Optimization
 
-This project implements a microgrid dispatch optimizer for a stationary battery storage system. It solves a Finite-Horizon Discrete-Time Optimal Control Problem to determine the optimal power dispatch over a specific horizon.
+BatteryOpt is a microservices-based platform designed to optimize the dispatch of battery energy storage systems (BESS) within microgrids. It combines real-time data ingestion (Market Prices, Solar, Load) with mathematical optimization to maximize net profit.
 
-## Project Goal
-The primary goal is to minimize total operational costs, which include:
-- Net grid energy exchange costs (buying and selling electricity).
-- A non-linear penalty term representing battery cycle degradation (modeled as a quadratic function of charge/discharge power).
+## 🏗️ Architecture Overview
 
-The optimizer accounts for system constraints such as battery capacity limits, maximum charge/discharge power, conversion efficiencies, and power node balance (integrating solar PV generation and household load).
+The system consists of four primary components interacting via a centralized TimescaleDB instance and a Celery/Redis task queue.
 
-## TODO
-- [ ] Add data source for solar and load
-- [ ] Check model behavior
+### 1. 📂 Core API (`core_api/`)
+*   **Role:** The central data orchestrator and management layer.
+*   **Responsibilities:**
+    *   Exposes endpoints for managing **Setups** (Physical configurations).
+    *   Manages the **Data Ingestion Pipeline** (ETL) to fetch market prices (ENTSO-E), solar forecasts (Open-Meteo), and synthetic load data.
+    *   Provides a REST API for the frontend to query historical performance and job statuses.
+*   **Tech:** Python (FastAPI), Psycopg3, Pandas.
+
+### 2. 🧠 Optimization Service (`optimization_service/`)
+*   **Role:** The "Quant" engine.
+*   **Responsibilities:**
+    *   Runs as a background **Celery Worker**.
+    *   Constructs and solves a high-fidelity **Pyomo** mathematical model for the microgrid.
+    *   Considers constraints: Power limits, SoC dynamics, efficiency losses, and battery degradation (alpha penalty).
+    *   Saves optimized dispatch plans back to the database.
+*   **Tech:** Python, Pyomo, IPOPT Solver, Celery.
+
+### 3. 💻 Frontend (`frontend/`)
+*   **Role:** The operational control center.
+*   **Responsibilities:**
+    *   **Operations View:** Trigger new integrated ingestion + optimization jobs and monitor live progress.
+    *   **Global Dashboard:** Analyze lifetime performance, revenue trends, and battery health.
+    *   **Job Analysis:** Drill down into specific optimization runs with interactive charts.
+*   **Tech:** React (TypeScript), Vite, Recharts, Axios.
+
+### 4. 🗄️ Database & Infrastructure
+*   **TimescaleDB:** A PostgreSQL-based time-series database for efficient storage of high-resolution sensor and planning data.
+*   **Redis:** Serves as the message broker for the asynchronous optimization tasks.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+*   [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+*   An **ENTSO-E API Key** (set in `.env` as `ENTSOE_API_KEY`)
+
+### Start Everything (Standard)
+The entire stack is containerized for easy deployment:
+```bash
+docker-compose up --build
+```
+*   **Frontend:** [http://localhost:5173](http://localhost:5173)
+*   **Core API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 🛠️ Development & Tooling
+
+### VS Code Integration
+The project includes a `.vscode/launch.json` for local development outside of Docker:
+1.  **Frontend (Hot Reloading):** Start the `Frontend (Vite)` config to get instant UI updates while editing.
+2.  **Simulation:** Use the `Generate Runs Script` config to trigger a sequence of historical optimization jobs.
+
+### Automation Scripts
+*   `scripts/generate_runs.py`: A utility script to backfill data and trigger optimizations for a sequence of dates.
