@@ -32,13 +32,13 @@ def trigger_job(setup_id, start_date, end_date):
 
 if __name__ == "__main__":
     setup_id = sys.argv[1] if len(sys.argv) > 1 else 2
-    start_str = sys.argv[2] if len(sys.argv) > 2 else "2025-01-01"
+    start_str = sys.argv[2] if len(sys.argv) > 2 else "2024-01-01"
     
     current_date = datetime.strptime(start_str, "%Y-%m-%d")
     
-    print(f"🚀 Starting 100 runs for Setup ID {setup_id} starting from {start_str}...")
+    print(f"🚀 Starting 1, 670 runs for Setup ID {setup_id} starting from {start_str}...")
     
-    for i in range(1, 101):
+    for i in range(1, 670):
         date_str = current_date.strftime("%Y-%m-%d")
         print(f"[{i}/100] Triggering job for {date_str}...")
         

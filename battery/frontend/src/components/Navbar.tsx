@@ -10,7 +10,7 @@ const Navbar: React.FC = () => {
   return (
     <nav style={{ 
       background: '#fff', 
-      borderBottom: '1px solid #e1e4e8', 
+      borderBottom: '1px solid #e2e8f0', 
       padding: '0.75rem 2rem', 
       display: 'flex', 
       justifyContent: 'space-between', 
@@ -18,26 +18,29 @@ const Navbar: React.FC = () => {
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
         <div 
           onClick={() => navigate('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 'bold', color: '#2d3748', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.4rem', fontWeight: '800', color: '#1a202c', cursor: 'pointer', letterSpacing: '-0.02em' }}
         >
-          <span>🔋</span> BatteryOpt
+          <span style={{ fontSize: '1.6rem' }}>🔋</span> <span>Battery<span style={{ color: '#3182ce' }}>Opt</span></span>
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button 
             onClick={() => navigate('/')}
             style={{ 
-              background: 'none', 
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              background: location.pathname === '/' ? '#ebf8ff' : 'transparent',
               border: 'none', 
-              color: location.pathname === '/' ? '#3498db' : '#4a5568',
-              fontWeight: location.pathname === '/' ? 'bold' : 'normal',
+              color: location.pathname === '/' ? '#2b6cb0' : '#4a5568',
+              fontWeight: '600',
               cursor: 'pointer',
-              fontSize: '0.95rem'
+              fontSize: '0.95rem',
+              transition: 'all 0.2s'
             }}
           >
             Operations
@@ -45,12 +48,15 @@ const Navbar: React.FC = () => {
           <button 
             onClick={() => navigate('/global')}
             style={{ 
-              background: 'none', 
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              background: location.pathname === '/global' ? '#ebf8ff' : 'transparent',
               border: 'none', 
-              color: location.pathname === '/global' ? '#3498db' : '#4a5568',
-              fontWeight: location.pathname === '/global' ? 'bold' : 'normal',
+              color: location.pathname === '/global' ? '#2b6cb0' : '#4a5568',
+              fontWeight: '600',
               cursor: 'pointer',
-              fontSize: '0.95rem'
+              fontSize: '0.95rem',
+              transition: 'all 0.2s'
             }}
           >
             Global Dashboard
@@ -59,40 +65,47 @@ const Navbar: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>ACTIVE SETUP:</div>
-        <select 
-          value={activeSetup?.id || ''} 
-          onChange={(e) => setActiveSetupId(parseInt(e.target.value))}
-          style={{ 
-            padding: '0.4rem 0.8rem', 
-            borderRadius: '6px', 
-            border: '1px solid #cbd5e0',
-            background: '#f8fafc',
-            color: '#2d3748',
-            fontWeight: '600',
-            outline: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          {setups.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <select 
+            value={activeSetup?.id || ''} 
+            onChange={(e) => setActiveSetupId(parseInt(e.target.value))}
+            style={{ 
+              padding: '0.6rem 1rem 0.6rem 1rem', 
+              borderRadius: '10px', 
+              border: '1px solid #cbd5e0',
+              background: '#f7fafc',
+              color: '#2d3748',
+              fontWeight: '700',
+              outline: 'none',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              minWidth: '200px',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+            }}
+          >
+            {setups.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
         
         <button 
-          onClick={() => alert('Setup Management coming soon!')} // TODO: Add setup management page
+          onClick={() => alert('Setup Management coming soon!')}
           style={{
-            background: '#edf2f7',
-            border: 'none',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
+            background: '#f7fafc',
+            border: '1px solid #cbd5e0',
+            borderRadius: '10px',
+            width: '38px',
+            height: '38px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            fontSize: '1rem'
+            fontSize: '1.1rem',
+            transition: 'all 0.2s'
           }}
+          onMouseOver={(e) => (e.currentTarget.style.background = '#edf2f7')}
+          onMouseOut={(e) => (e.currentTarget.style.background = '#f7fafc')}
           title="Manage Setups"
         >
           ⚙️

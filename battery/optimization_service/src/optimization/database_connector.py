@@ -127,24 +127,34 @@ def save_data(result: pd.DataFrame, setup_id: int, table_name: str = "dispatch_p
     try:
         with psycopg.connect(DB_DSN) as conn:
             with conn.cursor() as cur:
-                # 4. UPSERT STRATEGY: Delete existing records for this setup and these timestamps
-                # This ensures we can re-run jobs without unique constraint violations.
-                timestamps = df_db_ready['target_time'].tolist()
-                cur.execute(
-                    "DELETE FROM dispatch_plans WHERE setup_id = %s AND target_time = ANY(%s)",
-                    (setup_id, timestamps)
-                )
+                # 4. ATOMIC UPSERT STRATEGY
+                # We use a temporary table to stage the data, then perform an atomic 
+                # "INSERT ... ON CONFLICT" to avoid race conditions and unique constraint violations.
+                temp_table = f"temp_{table_name}"
+                cur.execute(f"CREATE TEMP TABLE {temp_table} (LIKE {table_name} INCLUDING ALL) ON COMMIT DROP;")
 
-                # 5. DYNAMIC SQL MAGIC
                 columns_str = ", ".join(df_db_ready.columns)
-                copy_query = f"COPY {table_name} ({columns_str}) FROM STDIN"
+                copy_query = f"COPY {temp_table} ({columns_str}) FROM STDIN"
                     
                 with cur.copy(copy_query) as copy:
                     for row in records:
                         copy.write_row(row)
+                
+                # Perform the atomic UPSERT
+                # We update all columns except the primary key (target_time, setup_id)
+                update_cols = [col for col in df_db_ready.columns if col not in ['target_time', 'setup_id']]
+                set_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_cols])
+
+                upsert_query = f"""
+                    INSERT INTO {table_name} ({columns_str})
+                    SELECT {columns_str} FROM {temp_table}
+                    ON CONFLICT (target_time, setup_id) DO UPDATE
+                    SET {set_clause};
+                """
+                cur.execute(upsert_query)
                     
                 conn.commit()
-                print(f"✅ Successfully saved {len(records)} optimal dispatch commands to DB.")
+                print(f"✅ Successfully saved {len(records)} optimal dispatch commands to DB (Atomic UPSERT).")
             
     except psycopg.Error as e:
         print(f"❌ Database error during save: {e}")

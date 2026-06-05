@@ -79,7 +79,7 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate, isGlobal = fa
 
         // Calculate degradation cost (approx based on alpha * (P_charge^2 + P_discharge^2))
         const alpha = 0.001; 
-        const degradation = plan ? alpha * (Math.pow(plan.cmd_charge_kw, 2) + Math.pow(plan.cmd_discharge_kw, 2)) : 0;
+        const degradation = (isGlobal && plan) ? alpha * (Math.pow(plan.cmd_charge_kw, 2) + Math.pow(plan.cmd_discharge_kw, 2)) : 0;
         cumulativeDegradation += degradation;
 
         // Daily aggregation for histogram
@@ -195,7 +195,7 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate, isGlobal = fa
       {/* Metrics Row */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+        gridTemplateColumns: `repeat(auto-fit, minmax(180px, 1fr))`, 
         gap: '1rem', 
         marginBottom: '2rem',
         position: 'sticky',
@@ -212,10 +212,12 @@ const Dashboard: React.FC<DashboardProps> = ({ startDate, endDate, isGlobal = fa
           <div style={{ fontSize: '0.8rem', color: '#666' }}>Grid Sell Revenue</div>
           <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#38a169' }}>${metrics?.totalSellRevenue.toFixed(2)}</div>
         </div>
-        <div style={metricCardStyle}>
-          <div style={{ fontSize: '0.8rem', color: '#666' }}>Est. Battery Wear</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#805ad5' }}>${metrics?.totalDegradation.toFixed(2)}</div>
-        </div>
+        {isGlobal && (
+          <div style={metricCardStyle}>
+            <div style={{ fontSize: '0.8rem', color: '#666' }}>Est. Battery Wear</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#805ad5' }}>${metrics?.totalDegradation.toFixed(2)}</div>
+          </div>
+        )}
         <div style={metricCardStyle}>
           <div style={{ fontSize: '0.8rem', color: '#666' }}>Net Profit</div>
           <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: (metrics?.netProfit || 0) >= 0 ? '#2ecc71' : '#e74c3c' }}>

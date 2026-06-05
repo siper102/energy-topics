@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { jobService } from '../services/api';
 import Dashboard from './Dashboard';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,7 @@ const Jobs: React.FC = () => {
   const [showTriggerForm, setShowTriggerForm] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [isSetupCollapsed, setIsSetupCollapsed] = useState(true);
   
   // Pagination state
   const [page, setPage] = useState(1);
@@ -59,6 +60,24 @@ const Jobs: React.FC = () => {
     const interval = setInterval(fetchJobs, 5000);
     return () => clearInterval(interval);
   }, [activeSetup, page, pageSize]);
+
+  const stats = useMemo(() => {
+    if (jobs.length === 0) return null;
+    const successfulJobs = jobs.filter(j => j.status === 'SUCCESS' && j.net_profit != null);
+    if (successfulJobs.length === 0) return null;
+    
+    const avgProfit = successfulJobs.reduce((acc, j) => acc + (j.net_profit || 0), 0) / successfulJobs.length;
+    
+    // Find time range of current jobs
+    const dates = jobs.map(j => new Date(j.start_date).getTime());
+    const minDate = new Date(Math.min(...dates));
+    const maxDate = new Date(Math.max(...dates));
+    
+    return {
+      avgProfit,
+      range: `${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`
+    };
+  }, [jobs]);
 
   const handleCloseModal = useCallback(() => {
     if (!selectedJob || isClosing) return;
@@ -204,7 +223,7 @@ const Jobs: React.FC = () => {
         }
         .view-toggle button.active {
           background: #3498db;
-          color: #white;
+          color: white;
           border-color: #3498db;
         }
         .view-toggle button:first-child {
@@ -245,6 +264,26 @@ const Jobs: React.FC = () => {
             </button>
           </header>
 
+          {stats && !showTriggerForm && (
+            <div style={{ 
+              background: '#ebf8ff', 
+              border: '1px solid #bee3f8', 
+              padding: '1rem 1.5rem', 
+              borderRadius: '12px', 
+              marginBottom: '1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ color: '#2b6cb0', fontWeight: 'bold', fontSize: '1rem' }}>
+                Current View: <span style={{ color: '#2d3748' }}>{stats.range}</span>
+              </div>
+              <div style={{ color: '#2b6cb0', fontWeight: 'bold', fontSize: '1rem' }}>
+                Avg. Net Profit: <span style={{ color: stats.avgProfit >= 0 ? '#38a169' : '#e53e3e' }}>${stats.avgProfit.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
           {/* Setup Parameters Overview - Hidden when creating a new job to focus on inputs */}
           {!showTriggerForm && (
             <section style={{ 
@@ -255,36 +294,46 @@ const Jobs: React.FC = () => {
               marginBottom: '2rem',
               boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
             }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Setup Configuration
-              </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem' }}>
-                <div title="The total amount of energy the battery can store in kilowatt-hours.">
-                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Battery Capacity</div>
-                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_capacity_kwh} kWh</div>
-                </div>
-                <div title="The maximum rate at which the battery can charge or discharge in kilowatts.">
-                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Max Power</div>
-                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_power_kw} kW</div>
-                </div>
-                <div title="The round-trip efficiency for charging and discharging. 95% means 5% of energy is lost as heat.">
-                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Efficiency (C/D)</div>
-                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.efficiency_charge * 100}% / {activeSetup.efficiency_discharge * 100}%</div>
-                </div>
-                <div title="The maximum potential output of the solar panels under ideal conditions in kilowatts peak.">
-                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Solar Peak</div>
-                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.peak_power_kw} kWp</div>
-                </div>
-                <div title="The geographic coordinates of the installation, used for solar irradiance calculation.">
-                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Location</div>
-                  <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.lat}, {activeSetup.lon}</div>
-                </div>
-                <div title="Tilt is the angle from the ground (0-90°). Azimuth is the direction (0° = South, -90° = East).">
-                  <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Orientation</div>
-                  <div style={{ fontWeight: '600', color: '#2d3748' }}>Tilt: {activeSetup.tilt}°, Azi: {activeSetup.azimuth}°</div>
-                </div>
+              <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => setIsSetupCollapsed(!isSetupCollapsed)}
+              >
+                <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Setup Configuration
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#3498db', fontWeight: 'bold' }}>
+                  {isSetupCollapsed ? 'Show Details ↓' : 'Hide Details ↑'}
+                </span>
               </div>
-
+              
+              {!isSetupCollapsed && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', marginTop: '1.25rem' }}>
+                  <div title="The total amount of energy the battery can store in kilowatt-hours.">
+                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Battery Capacity</div>
+                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_capacity_kwh} kWh</div>
+                  </div>
+                  <div title="The maximum rate at which the battery can charge or discharge in kilowatts.">
+                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Max Power</div>
+                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_power_kw} kW</div>
+                  </div>
+                  <div title="The round-trip efficiency for charging and discharging. 95% means 5% of energy is lost as heat.">
+                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Efficiency (C/D)</div>
+                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.efficiency_charge * 100}% / {activeSetup.efficiency_discharge * 100}%</div>
+                  </div>
+                  <div title="The maximum potential output of the solar panels under ideal conditions in kilowatts peak.">
+                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Solar Peak</div>
+                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.peak_power_kw} kWp</div>
+                  </div>
+                  <div title="The geographic coordinates of the installation, used for solar irradiance calculation.">
+                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Location</div>
+                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.lat}, {activeSetup.lon}</div>
+                  </div>
+                  <div title="Tilt is the angle from the ground (0-90°). Azimuth is the direction (0° = South, -90° = East).">
+                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Orientation</div>
+                    <div style={{ fontWeight: '600', color: '#2d3748' }}>Tilt: {activeSetup.tilt}°, Azi: {activeSetup.azimuth}°</div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
@@ -338,14 +387,12 @@ const Jobs: React.FC = () => {
           <div className="view-toggle" style={{ display: 'flex' }}>
             <button 
               className={pageSize === 7 ? 'active' : ''} 
-              style={pageSize === 7 ? { background: '#3498db', color: 'white' } : {}}
               onClick={() => { setPageSize(7); setPage(1); }}
             >
               Weekly View
             </button>
             <button 
               className={pageSize === 30 ? 'active' : ''} 
-              style={pageSize === 30 ? { background: '#3498db', color: 'white' } : {}}
               onClick={() => { setPageSize(30); setPage(1); }}
             >
               Monthly View

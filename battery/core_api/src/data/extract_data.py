@@ -50,7 +50,7 @@ class SensorETLPipeline:
             raise
 
     def load(self, df: pd.DataFrame, setup_id: int, table_name: str = "sensor_telemetry"):
-        """Loads data into TimescaleDB using ultra-fast COPY."""
+        """Loads data into TimescaleDB using ultra-fast COPY with atomic UPSERT."""
         if df.empty:
             logger.warning("DataFrame is empty. Nothing to load.")
             return
@@ -74,22 +74,31 @@ class SensorETLPipeline:
         try:
             with psycopg.connect(self.db_dsn) as conn:
                 with conn.cursor() as cur:
-                    # UPSERT STRATEGY: Delete existing records for this setup and these timestamps
-                    timestamps = df_db_ready['time'].tolist()
-                    cur.execute(
-                        "DELETE FROM sensor_telemetry WHERE setup_id = %s AND time = ANY(%s)",
-                        (setup_id, timestamps)
-                    )
+                    # ATOMIC UPSERT STRATEGY: 
+                    # Use a temp table to stage data, then INSERT ... ON CONFLICT
+                    temp_table = f"temp_{table_name}"
+                    cur.execute(f"CREATE TEMP TABLE {temp_table} (LIKE {table_name} INCLUDING ALL) ON COMMIT DROP;")
 
                     columns_str = ", ".join(df_db_ready.columns)
-                    copy_query = f"COPY {table_name} ({columns_str}) FROM STDIN"
+                    copy_query = f"COPY {temp_table} ({columns_str}) FROM STDIN"
                     
                     with cur.copy(copy_query) as copy:
                         for row in records:
                             copy.write_row(row)
                     
+                    # Perform the atomic UPSERT
+                    update_cols = [col for col in df_db_ready.columns if col not in ['time', 'setup_id']]
+                    set_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_cols])
+
+                    upsert_query = f"""
+                        INSERT INTO {table_name} ({columns_str})
+                        SELECT {columns_str} FROM {temp_table}
+                        ON CONFLICT (time, setup_id) DO UPDATE
+                        SET {set_clause};
+                    """
+                    cur.execute(upsert_query)
                     conn.commit()
-            logger.info("Load complete! ✅")
+            logger.info("Load complete! ✅ (Atomic UPSERT)")
             
         except psycopg.Error as e:
             logger.error(f"Database error during load: {e}")
