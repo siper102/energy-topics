@@ -30,6 +30,7 @@ def load_data(setup_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
             time, 
             load_kw, 
             solar_kw, 
+            temp_c,
             price_buy_usd_per_kwh as price_buy, 
             price_sell_usd_per_kwh as price_sell
         FROM sensor_telemetry

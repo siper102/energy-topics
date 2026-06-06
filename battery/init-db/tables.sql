@@ -37,6 +37,7 @@ CREATE TABLE sensor_telemetry (
     setup_id INTEGER NOT NULL REFERENCES setups(id),
     load_kw NUMERIC NOT NULL,
     solar_kw NUMERIC NOT NULL,
+    temp_c NUMERIC, -- Added for ML load prediction
     price_buy_usd_per_kwh NUMERIC NOT NULL,
     price_sell_usd_per_kwh NUMERIC NOT NULL,
     PRIMARY KEY (time, setup_id)

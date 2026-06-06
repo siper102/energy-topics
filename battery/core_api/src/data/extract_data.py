@@ -61,8 +61,8 @@ class SensorETLPipeline:
         df_reset.rename(columns={'index': 'time'}, inplace=True)
         df_reset['setup_id'] = setup_id
         
-        # Match schema: time, setup_id, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh
-        df_db_ready = df_reset[['time', 'setup_id', 'load_kw', 'solar_kw', 'price_buy', 'price_sell']].rename(
+        # Match schema: time, setup_id, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh, temp_c
+        df_db_ready = df_reset[['time', 'setup_id', 'load_kw', 'solar_kw', 'price_buy', 'price_sell', 'temp_c']].rename(
             columns={
                 'price_buy': 'price_buy_usd_per_kwh',
                 'price_sell': 'price_sell_usd_per_kwh'

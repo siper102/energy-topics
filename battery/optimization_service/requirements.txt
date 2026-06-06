@@ -6,3 +6,4 @@ pyomo
 psycopg[binary]
 pandas
 numpy
+httpx

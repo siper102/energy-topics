@@ -9,3 +9,6 @@ pyarrow
 fastparquet
 scikit-learn
 joblib
+matplotlib
+seaborn
+ipykernel

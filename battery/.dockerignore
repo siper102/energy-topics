@@ -1,0 +1,33 @@
+# Exclude Virtual Environments
+.venv/
+venv/
+env/
+.pixi/
+
+# Exclude Python Caches
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Exclude Large Data Files
+**/data/*.parquet
+**/data/*.pth
+**/data/*.joblib
+**/data/*.pkl
+graveyard/
+
+# Exclude Build Artifacts
+**/dist/
+**/build/
+**/*.egg-info/
+
+# Exclude IDE and Git
+.git/
+.gitignore
+.vscode/
+.DS_Store
+
+# Exclude Documentation
+documentation/
+*.pdf

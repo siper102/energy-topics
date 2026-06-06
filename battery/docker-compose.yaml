@@ -37,6 +37,8 @@ services:
     container_name: ml_service
     ports:
       - "8002:8002"
+    volumes:
+      - ./ml_service/data:/app/ml_service/data
 
   optimization_api:
     build: ./optimization_service
@@ -46,9 +48,11 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
+      - ML_SERVICE_URL=http://ml_service:8002
     depends_on:
       - redis
       - timescaledb
+      - ml_service
 
   optimization_worker:
     build: ./optimization_service
@@ -57,10 +61,12 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
+      - ML_SERVICE_URL=http://ml_service:8002
     depends_on:
       - redis
       - timescaledb
       - optimization_api
+      - ml_service
 
   frontend:
     build: ./frontend
