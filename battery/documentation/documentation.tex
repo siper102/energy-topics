@@ -29,7 +29,9 @@ We are solving a Finite-Horizon Discrete-Time Optimal Control Problem. The goal 
 \section{Sets and Indices}
 \begin{itemize}
     \item $\mathcal{T} = \{1, 2, \dots, N\}$: The optimization horizon.
-    \item $t$: A discrete time step index, where the duration of each step is $\Delta t$ (e.g., $\Delta t = 1$ hour).
+    \item $t \in \mathcal{T}$: A discrete time step index, where the duration of each step is $\Delta t$ (e.g., $\Delta t = 1$ hour).
+    \item $\mathcal{S} = \{1, 2, \dots, S\}$: The set of price scenarios, representing intraday price uncertainty relative to the day-ahead market.
+    \item $s \in \mathcal{S}$: Scenario index.
 \end{itemize}
 
 \section{Input Data (Parameters)}
@@ -48,10 +50,12 @@ We are solving a Finite-Horizon Discrete-Time Optimal Control Problem. The goal 
 
 \subsection{Time-Series Parameters}
 \begin{itemize}
-    \item $P_{load,t}$: Household power demand at time $t$ (kW).
+    \item $P_{load,t}$: Household power demand at time $t$ (kW). Note: This is currently a point estimate from the ML prediction service.
     \item $P_{pv,t}$: Solar photovoltaic generation at time $t$ (kW).
-    \item $\lambda^{buy}_t$: Price of purchasing electricity from the grid at time $t$ (\$/kWh).
-    \item $\lambda^{sell}_t$: Price of selling electricity to the grid at time $t$ (\$/kWh).
+    \item $\lambda^{DA}_t$: Day-Ahead electricity price at time $t$ (\$/kWh), fetched from ENTSO-E.
+    \item $\epsilon_{t,s}$: Intraday price spread (stochastic noise) at time $t$ under scenario $s$ (\$/kWh).
+    \item $\lambda^{buy}_{t,s}$: Price of purchasing electricity from the grid at time $t$ under scenario $s$ (\$/kWh). Defined as $\lambda^{buy}_{t,s} = \lambda^{DA}_t + \epsilon_{t,s}$.
+    \item $\lambda^{sell}_{t,s}$: Price of selling electricity to the grid at time $t$ under scenario $s$ (\$/kWh). Defined as $\lambda^{sell}_{t,s} = \lambda^{DA}_t + \epsilon_{t,s}$.
 \end{itemize}
 
 \section{Decision Variables}
@@ -67,10 +71,10 @@ These are the continuous variables optimized by the Interior Point solver at eac
 \section{Mathematical Formulation}
 
 \subsection{Objective Function}
-The objective is to minimize the total cost $J$ over the entire horizon:
+The objective is to minimize the \textbf{expected total cost} $\mathbb{E}[J]$ over all price scenarios:
 
 \begin{equation}
-    \min J = \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} + \lambda^{grid} (P_{buy,t} + P_{sell,t}) \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right]
+    \min \mathbb{E}[J] = \frac{1}{S} \sum_{s \in \mathcal{S}} \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_{t,s} P_{buy,t} - \lambda^{sell}_{t,s} P_{sell,t} + \lambda^{grid} (P_{buy,t} + P_{sell,t}) \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right]
 \end{equation}
 
 \vspace{0.5cm}
@@ -112,11 +116,11 @@ Power exchanges with the grid are limited by physical infrastructure (e.g., 20 k
 \end{equation}
 
 \subsection{Consolidated Optimization Problem}
-Bringing the objective and all constraints together, the complete deterministic microgrid dispatch problem is formulated as follows:
+Bringing the objective and all constraints together, the complete stochastic microgrid dispatch problem is formulated as follows:
 
 \begin{equation}
 \begin{aligned}
-\min_{\mathbf{P}, \mathbf{E}} \quad & \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_t P_{buy,t} - \lambda^{sell}_t P_{sell,t} + \lambda^{grid}(P_{buy,t} + P_{sell,t}) \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right] \\
+\min_{\mathbf{P}, \mathbf{E}} \quad & \frac{1}{S} \sum_{s \in \mathcal{S}} \sum_{t=1}^{N} \left[ \left( \lambda^{buy}_{t,s} P_{buy,t} - \lambda^{sell}_{t,s} P_{sell,t} + \lambda^{grid}(P_{buy,t} + P_{sell,t}) \right) \Delta t + \alpha \left( P_{ch,t}^2 + P_{dis,t}^2 \right) \right] \\
 \text{s.t.} \quad & P_{pv,t} + P_{buy,t} + P_{dis,t} = P_{load,t} + P_{sell,t} + P_{ch,t} && \forall t \in \mathcal{T} \\
 & E_t = E_{t-1} + \left( P_{ch,t} \eta_{c} - \frac{P_{dis,t}}{\eta_{d}} \right) \Delta t && \forall t \in \mathcal{T} \\
 & 0 \le P_{ch,t} \le P^{max} && \forall t \in \mathcal{T} \\

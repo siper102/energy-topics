@@ -8,15 +8,15 @@ We move away from synthetic load data to a dedicated machine learning service.
 - **Load Predictor (DNN):** 
     - **Architecture:** PyTorch Feed-forward Neural Network or LSTM.
     - **Inputs:** Historical load, Weather (Temp, Irradiance), and Temporal features.
-    - **Scenario Generation:** Instead of a point forecast, the service will produce **$N$ possible load paths** (scenarios) to represent uncertainty.
+    - **Output:** A **point estimate** forecast for the next 24-48 hours.
 - **Training Pipeline:** logic in `core_api` to feed historical telemetry to the `ml_service`.
 
 ## Phase 2: Stochastic Optimization (Intraday Robustness)
 Transition from deterministic optimization to a model that handles uncertainty around ENTSO-E Day-Ahead (DA) prices.
-- **Intraday Uncertainty:** While DA prices are known, real-time delivery often deviates. We will model the **Intraday Spread** (DA vs. Real-time) as a stochastic variable.
+- **Scenario Generation (Price):** We will model the **Intraday Spread** (DA vs. Real-time) as a stochastic variable. The optimizer will generate $N$ price paths by adding probabilistic noise/spread to the known DA price.
 - **Multi-Scenario Solver:**
-    - **Input:** $N$ Load scenarios from the `ml_service` and a distribution of Intraday price spreads.
-    - **Objective:** Optimize a *single* dispatch plan that maximizes expected profit across all scenarios.
+    - **Input:** The Load **point estimate** from `ml_service` and $N$ Price scenarios.
+    - **Objective:** Optimize a *single* dispatch plan that maximizes expected profit across all price outcomes.
     - **Risk Mitigation:** Add a penalty for "Empty Battery" states in high-price/low-solar scenarios.
 
 ## Phase 3: Data Enrichment for ML
@@ -29,9 +29,3 @@ Before training, we need a "Golden Dataset":
     - Predict Load (ML Service) -> Optimize (Stoch. Solver) -> Calculate Realized Profit (using actual Intraday prices).
 - **Comparison:** Compare "Deterministic Hindsight" vs. "Stochastic Forward" performance.
 
----
-
-## 🛠️ Immediate Next Steps
-1.  **Initialize `ml_service`:** Folder structure, Dockerfile, and PyTorch boilerplate.
-2.  **Scenario Generator:** Implement a "Jittered Load" generator in the ML service as a baseline for the stochastic optimizer.
-3.  **Upgrade Optimizer:** Refactor the Pyomo model to accept multiple scenarios.
