@@ -65,4 +65,11 @@ export const jobService = {
   },
 };
 
+export const mlService = {
+  predictLoad: async (features: number[]) => {
+    const response = await api.post('/ml/predict/load', { features });
+    return response.data;
+  },
+};
+
 export default api;

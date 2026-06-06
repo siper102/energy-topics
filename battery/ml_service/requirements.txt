@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+torch
+pandas
+numpy
+pydantic
+python-dotenv
+pyarrow
+fastparquet
+scikit-learn
+joblib

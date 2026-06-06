@@ -25,10 +25,18 @@ services:
     environment:
       - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
       - OPTIMIZATION_SERVICE_URL=http://optimization_api:8001
+      - ML_SERVICE_URL=http://ml_service:8002
       - ENTSOE_API_KEY=${ENTSOE_API_KEY}
     depends_on:
       - timescaledb
       - optimization_api
+      - ml_service
+
+  ml_service:
+    build: ./ml_service
+    container_name: ml_service
+    ports:
+      - "8002:8002"
 
   optimization_api:
     build: ./optimization_service

@@ -6,8 +6,8 @@ import requests
 
 class OpenMeteoSolarProvider(SolarProvider):
     """
-    Fetches real-time solar forecasts from Open-Meteo.
-    Calculates plane-of-array tilted irradiance automatically on the server.
+    Fetches weather data from Open-Meteo.
+    Calculates plane-of-array tilted irradiance and provides temperature.
     """
     def __init__(self, lat: float, lon: float, peak_power_kw: float, tilt: float = 35, azimuth: float = 0):
         self.lat = lat
@@ -15,12 +15,11 @@ class OpenMeteoSolarProvider(SolarProvider):
         self.peak_power_kw = peak_power_kw
         self.tilt = tilt
         self.azimuth = azimuth
-        # Open-Meteo doesn't require an API key for non-commercial use
+        # Open-Meteo archive API
         self.url = "https://archive-api.open-meteo.com/v1/archive"
 
     def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int = 60) -> pd.DataFrame:
         # 1. Map parameters to Open-Meteo's format
-        # Note: Open-Meteo assumes 0 = South, 90 = West, -90 = East
         start_str = start_time.strftime("%Y-%m-%d")
         end_str = end_time.strftime("%Y-%m-%d")
         params = {
@@ -28,7 +27,7 @@ class OpenMeteoSolarProvider(SolarProvider):
             "longitude": self.lon,
             "start_date": start_str,
             "end_date": end_str,
-            "hourly": "global_tilted_irradiance",
+            "hourly": "global_tilted_irradiance,temperature_2m",
             "tilt": self.tilt,
             "azimuth": self.azimuth,
             "timezone": "UTC"
@@ -44,18 +43,17 @@ class OpenMeteoSolarProvider(SolarProvider):
         # 2. Parse into DataFrame
         df = pd.DataFrame({
             "time": pd.to_datetime(hourly["time"]),
-            "gti": hourly["global_tilted_irradiance"] # W/m^2 on your tilted panels
+            "gti": hourly["global_tilted_irradiance"],
+            "temp_c": hourly["temperature_2m"]
         })
         df.set_index("time", inplace=True)
 
         # 3. Convert Irradiance to Power (kW)
-        # Standard test condition assumes 1000 W/m^2 yields 100% of peak power capacity.
-        # We also apply a standard 14% performance loss factor (inverter, cabling, dirt)
         loss_factor = 0.86 
         df["solar_kw"] = (df["gti"] / 1000.0) * self.peak_power_kw * loss_factor
+        
         # 4. Clean up, filter to requested window, and match resolution
-        df_final = df[["solar_kw"]].loc[start_time:end_time]
+        df_final = df[["solar_kw", "temp_c"]].loc[start_time:end_time]
         freq = f"{resolution_minutes}min"
 
         return df_final.resample(freq).interpolate(method="linear").round(3)
-
