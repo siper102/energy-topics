@@ -44,8 +44,10 @@ def run_optimization_and_get_results(model: pyo.ConcreteModel) -> pd.DataFrame:
                 # Stochastic Case: Take Mean across scenarios S
                 num_s = len(model.S)
                 
-                # We calculate the expected value for dispatch variables
-                avg_load = sum(pyo.value(model.P_load[s, t]) for s in model.S) / num_s
+                # We calculate the expected value for dispatch variables and stochastic parameters
+                avg_p_buy_price = sum(pyo.value(model.lambda_buy[s, t]) for s in model.S) / num_s
+                avg_p_sell_price = sum(pyo.value(model.lambda_sell[s, t]) for s in model.S) / num_s
+                
                 avg_p_buy = sum(pyo.value(model.P_buy[s, t]) for s in model.S) / num_s
                 avg_p_sell = sum(pyo.value(model.P_sell[s, t]) for s in model.S) / num_s
                 avg_p_charge = sum(pyo.value(model.P_charge[s, t]) for s in model.S) / num_s
@@ -54,10 +56,10 @@ def run_optimization_and_get_results(model: pyo.ConcreteModel) -> pd.DataFrame:
 
                 row = {
                     "time": t,
-                    "load_kw": avg_load,
+                    "load_kw": pyo.value(model.P_load[t]), # Now deterministic
                     "solar_kw": pyo.value(model.P_solar[t]),
-                    "price_buy_usd": pyo.value(model.lambda_buy[t]),
-                    "price_sell_usd": pyo.value(model.lambda_sell[t]),
+                    "price_buy_usd": avg_p_buy_price,
+                    "price_sell_usd": avg_p_sell_price,
                     "p_buy_kw": avg_p_buy,
                     "p_sell_kw": avg_p_sell,
                     "p_charge_kw": avg_p_charge,

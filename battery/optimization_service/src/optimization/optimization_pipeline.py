@@ -18,9 +18,9 @@ class OptimizationPipeline:
         self.hyper_params = hyper_params
         self.setup_id = setup_id
 
-    def _get_load_scenarios(self, time_series: pd.DataFrame) -> list:
+    def _get_load_forecast(self, time_series: pd.DataFrame) -> list:
         """
-        Calls the ML service to get stochastic load scenarios based on 
+        Calls the ML service to get a point-estimate load forecast based on 
         the provided weather and temporal features.
         """
         # Prepare features: [solar_kw, temp_c, hour, dayofweek, month]
@@ -35,43 +35,37 @@ class OptimizationPipeline:
             ])
         
         try:
-            logger.info(f"📡 Requesting 5 scenarios from ML service at {ML_SERVICE_URL}...")
+            logger.info(f"📡 Requesting load forecast from ML service at {ML_SERVICE_URL}...")
             response = httpx.post(
-                f"{ML_SERVICE_URL}/predict/load/scenarios",
-                json={"features_list": features, "num_scenarios": 5},
+                f"{ML_SERVICE_URL}/predict_load_forecast",
+                json={"features_list": features},
                 timeout=20.0
             )
             response.raise_for_status()
             data = response.json()
-            return data['scenarios']
+            return data['forecast']
         except Exception as e:
-            logger.error(f"❌ Failed to fetch scenarios from ML service: {e}")
-            logger.warning("Falling back to deterministic optimization using DB load_kw.")
+            logger.error(f"❌ Failed to fetch forecast from ML service: {e}")
+            logger.warning("Falling back to using existing DB load_kw.")
             return None
 
     def run_pipeline(self):
         # 1. Load Data
         time_series, battery_params = load_data(setup_id=self.setup_id)
         
-        # 2. Get Scenarios (Stochastic Path)
-        scenarios = self._get_load_scenarios(time_series)
-        
-        # 3. Build Model
-        if scenarios:
-            logger.info(f"🎲 Building STOCHASTIC model for setup_id={self.setup_id}...")
-            model = create_stochastic_microgrid_model(
-                time_series=time_series,
-                load_scenarios=scenarios,
-                battery_params=battery_params,
-                hyper_params=self.hyper_params
-            )
-        else:
-            logger.info(f"📝 Building DETERMINISTIC model for setup_id={self.setup_id}...")
-            model = create_microgrid_model(
-                time_series=time_series,
-                battery_params=battery_params,
-                hyper_params=self.hyper_params
-            )
+        # 2. Get Point-Estimate Forecast
+        forecast = self._get_load_forecast(time_series)
+        if forecast:
+            logger.info(f"📈 Updating load_kw with ML forecast (length: {len(forecast)})")
+            time_series['load_kw'] = forecast
+
+        # 3. Build Model (Currently only Deterministic since load scenarios are removed)
+        logger.info(f"📝 Building DETERMINISTIC model for setup_id={self.setup_id}...")
+        model = create_microgrid_model(
+            time_series=time_series,
+            battery_params=battery_params,
+            hyper_params=self.hyper_params
+        )
         
         # 4. Solve
         solution = run_optimization_and_get_results(model=model)

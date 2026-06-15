@@ -37,6 +37,8 @@ services:
     container_name: ml_service
     ports:
       - "8002:8002"
+    environment:
+      - BENTOML_HOME=/app/ml_service/data/bentoml
     volumes:
       - ./ml_service/data:/app/ml_service/data
 

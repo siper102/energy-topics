@@ -6,54 +6,45 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import os
-import joblib
+import bentoml
 
-# Use absolute imports relative to src
-from model.predictor import LoadPredictor
+# Import from local model_factory
+from model_factory import create_load_predictor
 
-def train_model(data_path: str = "ml_service/data/training_data.parquet", model_save_path: str = "ml_service/data/model.pth", scaler_save_path: str = "ml_service/data/scaler.joblib"):
+def train_model(data_path: str = "ml_service/data/training_data.parquet"):
     """
-    Trains the LoadPredictor DNN using the Golden Dataset.
+    Core training logic: Loads data, scales, trains, and returns (model, scaler).
     """
     if not os.path.exists(data_path):
-        print(f"❌ Error: Data file not found at {data_path}")
-        return
+        raise FileNotFoundError(f"Data file not found at {data_path}")
 
     print(f"📂 Loading training data from {data_path}...")
     df = pd.read_parquet(data_path)
     
-    # 1. Feature Engineering: Define inputs and target
+    # 1. Feature Selection
     feature_cols = ['solar_kw', 'temp_c', 'hour', 'dayofweek', 'month']
     target_col = 'load_kw'
     
     X = df[feature_cols].values.astype(np.float32)
     y = df[target_col].values.reshape(-1, 1).astype(np.float32)
     
-    # 2. Preprocessing: Scaling
+    # 2. Scaling
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
-    
-    # Save scaler for inference
-    os.makedirs(os.path.dirname(scaler_save_path), exist_ok=True)
-    joblib.dump(scaler, scaler_save_path)
-    print(f"⚖️ Scaler saved to {scaler_save_path}")
+    print("⚖️ Features scaled.")
 
-    # 3. Prepare PyTorch Tensors & DataLoader
+    # 3. Prepare Data
     X_tensor = torch.from_numpy(X_scaled)
     y_tensor = torch.from_numpy(y)
-    
     dataset = TensorDataset(X_tensor, y_tensor)
     train_loader = DataLoader(dataset, batch_size=64, shuffle=True)
 
-    # 4. Initialize Model, Loss, and Optimizer
-    input_size = len(feature_cols)
-    output_size = 1 # Point estimate for now
-    model = LoadPredictor(input_size=input_size, output_size=output_size)
-    
+    # 4. Model Setup
+    model = create_load_predictor(input_size=len(feature_cols))
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # 5. Training Loop
+    # 5. Training
     epochs = 20
     print(f"🚀 Training for {epochs} epochs...")
     model.train()
@@ -70,9 +61,29 @@ def train_model(data_path: str = "ml_service/data/training_data.parquet", model_
         if (epoch + 1) % 5 == 0:
             print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss/len(train_loader):.4f}")
 
-    # 6. Save Model weights
-    torch.save(model.state_dict(), model_save_path)
-    print(f"💾 Model weights saved to {model_save_path}")
+    model.eval()
+    return model, scaler
+
+def run_ml_pipeline(data_path: str = "ml_service/data/training_data.parquet"):
+    """
+    Runs the full pipeline: trains the model and saves it to BentoML store.
+    """
+    model, scaler = train_model(data_path)
+
+    # 6. Save to BentoML Store
+    print("💾 Saving model to BentoML store...")
+    bentoml.pytorch.save_model(
+        "battery_load_predictor",
+        model,
+        custom_objects={"scaler": scaler},
+        signatures={
+            "__call__": {
+                "batchable": True,
+                "batch_dim": 0,
+            }
+        }
+    )
+    print("✅ Model saved to BentoML store as 'battery_load_predictor'.")
 
 if __name__ == "__main__":
-    train_model()
+    run_ml_pipeline()

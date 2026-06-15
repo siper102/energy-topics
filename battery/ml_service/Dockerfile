@@ -10,7 +10,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
 ENV PYTHONPATH=/app/src
+ENV BENTOML_HOME=/app/ml_service/data/bentoml
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
+# Use the entrypoint script to handle auto-training
+ENTRYPOINT ["./entrypoint.sh"]
