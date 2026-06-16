@@ -11,3 +11,4 @@ joblib
 matplotlib
 seaborn
 ipykernel
+requests

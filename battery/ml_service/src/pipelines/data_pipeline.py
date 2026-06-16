@@ -1,17 +1,12 @@
 import os
-import sys
 from datetime import datetime
-import pandas as pd
 
-# Add core_api/src to path to reuse providers
-sys.path.append(os.path.join(os.getcwd(), "core_api", "src"))
+from external_data.weather_provider import WeatherProvider
+from external_data.data_generator import DataGenerator
 
-from data.open_meteo_solar_provider import OpenMeteoSolarProvider
-from model.data_generator import DataGenerator
-
-def run_data_pipeline(output_path: str = "ml_service/data/training_data.parquet"):
+def run_data_pipeline(output_path: str = "data/training_data.parquet"):
     """
-    1. Fetches historical weather (Solar + Temp)
+    1. Fetches historical temperature
     2. Generates synthetic load
     3. Adds temporal features
     4. Saves to Parquet
@@ -20,14 +15,13 @@ def run_data_pipeline(output_path: str = "ml_service/data/training_data.parquet"
     
     # Configuration
     lat, lon = 51.26, 6.84
-    peak_power = 5.0
     start = datetime(2023, 1, 1)
     end = datetime(2024, 12, 31)
     
-    # 1. Fetch Weather
-    weather_p = OpenMeteoSolarProvider(lat, lon, peak_power)
-    print(f"📡 Fetching weather data from {start.date()} to {end.date()}...")
-    df = weather_p.fetch_data(start, end)
+    # 1. Fetch Temperature
+    weather_p = WeatherProvider(lat, lon)
+    print(f"📡 Fetching temperature data from {start.date()} to {end.date()}...")
+    df = weather_p.fetch_temperature(start, end)
     
     # 2. Generate Load
     print("🧠 Generating synthetic realistic load...")

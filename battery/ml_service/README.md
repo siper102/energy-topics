@@ -10,7 +10,7 @@ This service provides load forecasting capabilities for the microgrid optimizati
 
 ## 🏗️ Model Architecture
 The service uses a PyTorch-based Multi-Layer Perceptron (MLP):
-- **Inputs (5)**: `solar_kw`, `temp_c`, `hour`, `dayofweek`, `month`.
+- **Inputs (4)**: `temp_c`, `hour`, `dayofweek`, `month`.
 - **Layers**: 3 Linear layers with ReLU activation.
 - **Output (1)**: `load_kw` (Point estimate).
 
@@ -22,9 +22,9 @@ For stochastic forecasting, the service applies an **AR(1) Noise Process** ($\ph
 - **Model Weights**: `ml_service/data/model.pth`.
 
 ## 🔌 API Endpoints
-- `GET /health`: Checks if model and scaler are loaded.
-- `POST /predict/load`: Returns a single point estimate.
-- `POST /predict/load/scenarios`: Returns $N$ stochastic trajectories for a given feature sequence.
+- `POST /predict`: Batch point-estimate load forecast for one or more feature sets.
+  - **Request Body**: `{"features_list": [[temp, hour, day, month], ...]}`
+  - **Response**: `{"forecasts": [val1, val2, ...]}`
 
 ## 🛠️ Development
 To train the model manually:

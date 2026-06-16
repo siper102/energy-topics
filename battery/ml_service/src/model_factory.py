@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 
 class LoadPredictor(nn.Module):
-    def __init__(self, input_size: int = 5, hidden_size: int = 64, output_size: int = 1):
+    def __init__(self, input_size: int = 4, hidden_size: int = 64, output_size: int = 1):
         """
         DNN for Load Prediction.
-        Default input_size=5 (solar_kw, temp_c, hour, dayofweek, month)
+        Default input_size=4 (temp_c, hour, dayofweek, month)
         """
         super(LoadPredictor, self).__init__()
         self.network = nn.Sequential(
@@ -19,7 +19,7 @@ class LoadPredictor(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
 
-def create_load_predictor(input_size: int = 5, hidden_size: int = 64, output_size: int = 1) -> LoadPredictor:
+def create_load_predictor(input_size: int = 4, hidden_size: int = 64, output_size: int = 1) -> LoadPredictor:
     """
     Factory function to create a LoadPredictor model instance.
     """

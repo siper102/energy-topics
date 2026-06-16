@@ -1,27 +1,25 @@
 #!/bin/bash
 set -e
 
-# Path to the BentoML model store index (approximate check)
+# Path to the BentoML model store index
 MODEL_NAME="battery_load_predictor"
 
 echo "🔍 Checking for model '$MODEL_NAME' in BentoML store..."
 
-# We use bentoml models list to check if the model exists
+# Export PYTHONPATH to include the src directory for imports
+export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+
+# Check if the model exists in the local store
 if bentoml models list | grep -q "$MODEL_NAME"; then
     echo "✅ Model found. Starting BentoML service..."
 else
-    echo "⚠️ Model not found. Starting automatic training pipeline..."
+    echo "⚠️ Model not found. Starting consolidated training routine..."
     
-    # 1. Run Data Pipeline
-    echo "📥 Running Data Pipeline..."
-    python src/data_pipeline.py
+    # Run the consolidated training and registration script
+    python src/train_model.py
     
-    # 2. Run ML Pipeline
-    echo "🧠 Running ML Pipeline..."
-    python src/ml_pipeline.py
-    
-    echo "✅ Training complete. Starting BentoML service..."
+    echo "✅ Training and registration complete. Starting BentoML service..."
 fi
 
-# Start the BentoML service
-exec bentoml serve src.service:BatteryMLService --host 0.0.0.0 --port 8002
+# Start the BentoML service (now using src.api:BatteryMLService)
+exec bentoml serve src.api:BatteryMLService --host 0.0.0.0 --port 8002

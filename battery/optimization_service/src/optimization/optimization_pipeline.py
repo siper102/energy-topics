@@ -37,13 +37,13 @@ class OptimizationPipeline:
         try:
             logger.info(f"📡 Requesting load forecast from ML service at {ML_SERVICE_URL}...")
             response = httpx.post(
-                f"{ML_SERVICE_URL}/predict_load_forecast",
+                f"{ML_SERVICE_URL}/predict",
                 json={"features_list": features},
                 timeout=20.0
             )
             response.raise_for_status()
             data = response.json()
-            return data['forecast']
+            return data['forecasts']
         except Exception as e:
             logger.error(f"❌ Failed to fetch forecast from ML service: {e}")
             logger.warning("Falling back to using existing DB load_kw.")

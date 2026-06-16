@@ -11,7 +11,7 @@ import bentoml
 # Import from local model_factory
 from model_factory import create_load_predictor
 
-def train_model(data_path: str = "ml_service/data/training_data.parquet"):
+def train_model(data_path: str = "data/training_data.parquet"):
     """
     Core training logic: Loads data, scales, trains, and returns (model, scaler).
     """
@@ -22,7 +22,7 @@ def train_model(data_path: str = "ml_service/data/training_data.parquet"):
     df = pd.read_parquet(data_path)
     
     # 1. Feature Selection
-    feature_cols = ['solar_kw', 'temp_c', 'hour', 'dayofweek', 'month']
+    feature_cols = ['temp_c', 'hour', 'dayofweek', 'month']
     target_col = 'load_kw'
     
     X = df[feature_cols].values.astype(np.float32)
@@ -64,25 +64,20 @@ def train_model(data_path: str = "ml_service/data/training_data.parquet"):
     model.eval()
     return model, scaler
 
-def run_ml_pipeline(data_path: str = "ml_service/data/training_data.parquet"):
+def run_ml_pipeline(data_path: str = "data/training_data.parquet"):
     """
     Runs the full pipeline: trains the model and saves it to BentoML store.
     """
     model, scaler = train_model(data_path)
 
-    # 6. Save to BentoML Store
+    # 6. Save to BentoML Store (New API for v1.4+)
     print("💾 Saving model to BentoML store...")
-    bentoml.pytorch.save_model(
+    with bentoml.models.create(
         "battery_load_predictor",
-        model,
         custom_objects={"scaler": scaler},
-        signatures={
-            "__call__": {
-                "batchable": True,
-                "batch_dim": 0,
-            }
-        }
-    )
+    ) as bento_model:
+        torch.save(model, bento_model.path_of("model.pth"))
+    
     print("✅ Model saved to BentoML store as 'battery_load_predictor'.")
 
 if __name__ == "__main__":
