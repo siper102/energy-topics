@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-class DataGenerator:
+class LoadSensor:
     """
     Generates synthetic load data based on weather and temporal features.
     Logic: Load = Base + Activity(Time) + Thermal(Temp) + Noise

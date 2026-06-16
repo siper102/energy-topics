@@ -16,8 +16,7 @@ __pycache__/
 htmlcov/
 
 # ML Artifacts
-ml_service/data/*
-ml_service/data
+ml_service/data/
 
 # DS_Store
 .DS_Store

@@ -1,6 +1,5 @@
 import os
 import logging
-import bentoml
 from pipelines.data_pipeline import run_data_pipeline
 from pipelines.ml_pipeline import run_ml_pipeline
 

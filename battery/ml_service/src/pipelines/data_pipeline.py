@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from external_data.weather_provider import WeatherProvider
-from external_data.data_generator import DataGenerator
+from external_data.load_sensor import LoadSensor
 
 def run_data_pipeline(output_path: str = "data/training_data.parquet"):
     """
@@ -25,7 +25,7 @@ def run_data_pipeline(output_path: str = "data/training_data.parquet"):
     
     # 2. Generate Load
     print("🧠 Generating synthetic realistic load...")
-    gen = DataGenerator()
+    gen = LoadSensor()
     df['load_kw'] = gen.generate_realistic_load(df)
     
     # 3. Add temporal features for the DNN
