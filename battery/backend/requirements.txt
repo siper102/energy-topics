@@ -11,3 +11,4 @@ pydantic
 python-dotenv
 entsoe-py
 requests
+sqlmodel
