@@ -4,11 +4,10 @@ import psycopg
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from database import DB_DSN
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@timescaledb:5432/battery")
 
 class SetupBase(BaseModel):
     name: str

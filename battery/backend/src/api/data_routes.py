@@ -4,6 +4,7 @@ import psycopg
 import pandas as pd
 from typing import Optional
 from fastapi import APIRouter, HTTPException
+from database import DB_DSN
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -13,8 +14,6 @@ async def get_dashboard_data(setup_id: int, start_date: Optional[str] = None, en
     """
     Fetches the latest telemetry and dispatch plans for the dashboard.
     """
-    DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@timescaledb:5432/battery")
-    
     try:
         with psycopg.connect(DB_DSN) as conn:
             where_telemetry = "WHERE setup_id = %s"
