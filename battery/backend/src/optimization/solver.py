@@ -1,6 +1,5 @@
 import pyomo.environ as pyo
 import pandas as pd
-import numpy as np
 
 def run_optimization_and_get_results(model: pyo.ConcreteModel) -> pd.DataFrame:
     """
@@ -22,50 +21,21 @@ def run_optimization_and_get_results(model: pyo.ConcreteModel) -> pd.DataFrame:
         
         print("\n✅ Optimal Solution Found! Extracting results...")
         
-        is_stochastic = hasattr(model, 'S')
         data = []
 
         for t in model.T:
-            if not is_stochastic:
-                # Deterministic Case
-                row = {
-                    "time": t,
-                    "load_kw": pyo.value(model.P_load[t]),
-                    "solar_kw": pyo.value(model.P_solar[t]),
-                    "price_buy_usd": pyo.value(model.lambda_buy[t]),
-                    "price_sell_usd": pyo.value(model.lambda_sell[t]),
-                    "p_buy_kw": pyo.value(model.P_buy[t]),
-                    "p_sell_kw": pyo.value(model.P_sell[t]),
-                    "p_charge_kw": pyo.value(model.P_charge[t]),
-                    "p_discharge_kw": pyo.value(model.P_discharge[t]),
-                    "soc_kwh": pyo.value(model.E[t])
-                }
-            else:
-                # Stochastic Case: Take Mean across scenarios S
-                num_s = len(model.S)
-                
-                # We calculate the expected value for dispatch variables and stochastic parameters
-                avg_p_buy_price = sum(pyo.value(model.lambda_buy[s, t]) for s in model.S) / num_s
-                avg_p_sell_price = sum(pyo.value(model.lambda_sell[s, t]) for s in model.S) / num_s
-                
-                avg_p_buy = sum(pyo.value(model.P_buy[s, t]) for s in model.S) / num_s
-                avg_p_sell = sum(pyo.value(model.P_sell[s, t]) for s in model.S) / num_s
-                avg_p_charge = sum(pyo.value(model.P_charge[s, t]) for s in model.S) / num_s
-                avg_p_discharge = sum(pyo.value(model.P_discharge[s, t]) for s in model.S) / num_s
-                avg_soc = sum(pyo.value(model.E[s, t]) for s in model.S) / num_s
-
-                row = {
-                    "time": t,
-                    "load_kw": pyo.value(model.P_load[t]), # Now deterministic
-                    "solar_kw": pyo.value(model.P_solar[t]),
-                    "price_buy_usd": avg_p_buy_price,
-                    "price_sell_usd": avg_p_sell_price,
-                    "p_buy_kw": avg_p_buy,
-                    "p_sell_kw": avg_p_sell,
-                    "p_charge_kw": avg_p_charge,
-                    "p_discharge_kw": avg_p_discharge,
-                    "soc_kwh": avg_soc
-                }
+            row = {
+                "time": t,
+                "load_kw": pyo.value(model.P_load[t]),
+                "solar_kw": pyo.value(model.P_solar[t]),
+                "price_buy_usd": pyo.value(model.lambda_buy[t]),
+                "price_sell_usd": pyo.value(model.lambda_sell[t]),
+                "p_buy_kw": pyo.value(model.P_buy[t]),
+                "p_sell_kw": pyo.value(model.P_sell[t]),
+                "p_charge_kw": pyo.value(model.P_charge[t]),
+                "p_discharge_kw": pyo.value(model.P_discharge[t]),
+                "soc_kwh": pyo.value(model.E[t])
+            }
             data.append(row)
             
         # 5. Format the DataFrame

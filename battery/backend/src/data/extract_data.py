@@ -4,18 +4,18 @@ from datetime import datetime
 from dotenv import load_dotenv
 import psycopg
 import pandas as pd
-from data.mock_energy_data_provider import MockLoadProvider
 from data.forecast_load_provider import ForecastLoadDataProvider
 from data.open_meteo_solar_provider import OpenMeteoSolarProvider
 from data.entsoe_e_data_provider import ENTSOEPriceProvider
 from data.energy_data_provider import LoadProvider, SolarProvider, PriceProvider
 
-# 1. Setup Professional Logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://ml_service:5000")
 
 class SensorETLPipeline:
     def __init__(
@@ -123,7 +123,11 @@ if __name__ == "__main__":
     
     # 2. Select your providers here (The core request: DECAPPING!)
     # We can now mix and match easily
-    load_p = MockLoadProvider()
+    load_p = ForecastLoadDataProvider(
+        lat=51.26,
+        lon=6.84,
+        ml_service_url=ML_SERVICE_URL
+    )
     solar_p = OpenMeteoSolarProvider(
         lat=51.26, 
         lon=6.84, 

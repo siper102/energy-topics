@@ -22,14 +22,6 @@ export const setupService = {
 };
 
 export const dataService = {
-  triggerIngestion: async (startDate: string, endDate: string, setupId: number) => {
-    const response = await api.post('/data/ingest', { start_date: startDate, end_date: endDate, setup_id: setupId });
-    return response.data;
-  },
-  getIngestionStatus: async () => {
-    const response = await api.get('/data/ingest/status');
-    return response.data;
-  },
   getDashboardData: async (setupId: number, startDate?: string, endDate?: string) => {
     const params: any = { setup_id: setupId };
     if (startDate && endDate) {
@@ -37,17 +29,6 @@ export const dataService = {
       params.end_date = endDate;
     }
     const response = await api.get('/data/dashboard-data', { params });
-    return response.data;
-  },
-};
-
-export const optimizationService = {
-  triggerOptimization: async (setupId: number, alpha: number = 0.001, gridFee: number = 0.01) => {
-    const response = await api.post('/optimization/trigger', { alpha, grid_fee: gridFee, setup_id: setupId });
-    return response.data;
-  },
-  getStatus: async (taskId: string) => {
-    const response = await api.get(`/optimization/status/${taskId}`);
     return response.data;
   },
 };
@@ -61,6 +42,10 @@ export const jobService = {
   },
   triggerFullJob: async (startDate: string, endDate: string, setupId: number, alpha: number = 0.001, gridFee: number = 0.01) => {
     const response = await api.post('/jobs/trigger-full', { start_date: startDate, end_date: endDate, setup_id: setupId, alpha, grid_fee: gridFee });
+    return response.data;
+  },
+  getTaskStatus: async (taskId: string) => {
+    const response = await api.get(`/jobs/status/${taskId}`);
     return response.data;
   },
 };

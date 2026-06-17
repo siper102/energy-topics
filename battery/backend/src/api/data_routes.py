@@ -2,31 +2,11 @@ import os
 import logging
 import psycopg
 import pandas as pd
-from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from worker import celery_app
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-class IngestRequest(BaseModel):
-    start_date: str  # YYYY-MM-DD
-    end_date: str    # YYYY-MM-DD
-    setup_id: int
-
-@router.post("/ingest")
-async def trigger_ingestion(request: IngestRequest):
-    """
-    Triggers the data extraction and loading pipeline as a Celery task.
-    """
-    # We will define 'run_ingestion_task' in backend/src/tasks.py
-    task = celery_app.send_task(
-        "tasks.run_ingestion_task",
-        args=[request.start_date, request.end_date, request.setup_id]
-    )
-    return {"message": "Data ingestion triggered", "task_id": task.id}
 
 @router.get("/dashboard-data")
 async def get_dashboard_data(setup_id: int, start_date: Optional[str] = None, end_date: Optional[str] = None):
