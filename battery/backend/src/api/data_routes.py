@@ -1,0 +1,79 @@
+import os
+import logging
+import psycopg
+import pandas as pd
+from datetime import datetime
+from typing import List, Optional
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from worker import celery_app
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+class IngestRequest(BaseModel):
+    start_date: str  # YYYY-MM-DD
+    end_date: str    # YYYY-MM-DD
+    setup_id: int
+
+@router.post("/ingest")
+async def trigger_ingestion(request: IngestRequest):
+    """
+    Triggers the data extraction and loading pipeline as a Celery task.
+    """
+    # We will define 'run_ingestion_task' in backend/src/tasks.py
+    task = celery_app.send_task(
+        "tasks.run_ingestion_task",
+        args=[request.start_date, request.end_date, request.setup_id]
+    )
+    return {"message": "Data ingestion triggered", "task_id": task.id}
+
+@router.get("/dashboard-data")
+async def get_dashboard_data(setup_id: int, start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """
+    Fetches the latest telemetry and dispatch plans for the dashboard.
+    """
+    DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@timescaledb:5432/battery")
+    
+    try:
+        with psycopg.connect(DB_DSN) as conn:
+            where_telemetry = "WHERE setup_id = %s"
+            where_plans = "WHERE setup_id = %s"
+            params_telemetry = [setup_id]
+            params_plans = [setup_id]
+            
+            if start_date and end_date:
+                real_end = f"{end_date} 23:59:59"
+                where_telemetry += " AND time >= %s AND time <= %s"
+                where_plans += " AND target_time >= %s AND target_time <= %s"
+                params_telemetry.extend([start_date, real_end])
+                params_plans.extend([start_date, real_end])
+            
+            query_telemetry = f"""
+            SELECT time, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh 
+            FROM sensor_telemetry 
+            {where_telemetry}
+            ORDER BY time ASC;
+            """
+            
+            query_plans = f"""
+            SELECT target_time, cmd_charge_kw, cmd_discharge_kw, expected_soc_kwh, expected_grid_buy_kw, expected_grid_sell_kw
+            FROM dispatch_plans
+            {where_plans}
+            ORDER BY target_time ASC;
+            """
+            
+            df_telemetry = pd.read_sql(query_telemetry, conn, params=params_telemetry)
+            df_plans = pd.read_sql(query_plans, conn, params=params_plans)
+            
+            df_telemetry['time'] = pd.to_datetime(df_telemetry['time'])
+            df_plans['target_time'] = pd.to_datetime(df_plans['target_time'])
+            
+            return {
+                "telemetry": df_telemetry.to_dict(orient="records"),
+                "plans": df_plans.to_dict(orient="records")
+            }
+            
+    except Exception as e:
+        logger.error(f"Failed to fetch dashboard data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

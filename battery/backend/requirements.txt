@@ -1,9 +1,13 @@
 fastapi
 uvicorn
-httpx
-pydantic
+celery
+redis
+pyomo
 psycopg[binary]
 pandas
+numpy
+httpx
+pydantic
 python-dotenv
 entsoe-py
 requests

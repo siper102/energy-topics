@@ -17,20 +17,35 @@ services:
     ports:
       - "6379:6379"
 
-  core_api:
-    build: ./core_api
-    container_name: core_api
+  backend_api:
+    build: ./backend
+    container_name: backend_api
     ports:
       - "8000:8000"
     environment:
       - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
-      - OPTIMIZATION_SERVICE_URL=http://optimization_api:8001
+      - REDIS_URL=redis://redis:6379/0
       - ML_SERVICE_URL=http://ml_service:8002
       - ENTSOE_API_KEY=${ENTSOE_API_KEY}
     depends_on:
       - timescaledb
-      - optimization_api
+      - redis
       - ml_service
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  backend_worker:
+    build: ./backend
+    container_name: backend_worker
+    command: celery -A worker.celery_app worker --loglevel=info
+    environment:
+      - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
+      - REDIS_URL=redis://redis:6379/0
+      - ML_SERVICE_URL=http://ml_service:8002
+      - ENTSOE_API_KEY=${ENTSOE_API_KEY}
+    depends_on:
+      - timescaledb
+      - redis
+      - backend_api
 
   ml_service:
     build: ./ml_service
@@ -42,34 +57,6 @@ services:
     volumes:
       - ./ml_service/data:/app/ml_service/data
 
-  optimization_api:
-    build: ./optimization_service
-    container_name: optimization_api
-    ports:
-      - "8001:8001"
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
-      - ML_SERVICE_URL=http://ml_service:8002
-    depends_on:
-      - redis
-      - timescaledb
-      - ml_service
-
-  optimization_worker:
-    build: ./optimization_service
-    container_name: optimization_worker
-    command: celery -A worker.celery_app worker --loglevel=info
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DB_DSN=postgresql://postgres:postgres@timescaledb:5432/battery
-      - ML_SERVICE_URL=http://ml_service:8002
-    depends_on:
-      - redis
-      - timescaledb
-      - optimization_api
-      - ml_service
-
   frontend:
     build: ./frontend
     container_name: battery_frontend
@@ -78,4 +65,4 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8000/api
     depends_on:
-      - core_api
+      - backend_api
