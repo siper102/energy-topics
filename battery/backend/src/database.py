@@ -5,14 +5,18 @@ from optimization.model_factory import BatteryParams
 import os
 import psycopg
 import logging
-from sqlmodel import Session, create_engine, select, text
+from sqlalchemy import text
+from sqlmodel import Session, create_engine, select
 
 logger = logging.getLogger(__name__)
 
+# Raw DSN for psycopg (v3)
 DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@timescaledb:5432/battery")
 
-# SQLModel Engine (Manages connection pooling)
-engine = create_engine(DB_DSN)
+# SQLAlchemy Engine (Explicitly use psycopg v3 dialect)
+# SQLAlchemy needs 'postgresql+psycopg://' to use psycopg v3
+engine_url = DB_DSN.replace("postgresql://", "postgresql+psycopg://")
+engine = create_engine(engine_url)
 
 def get_session():
     with Session(engine) as session:
@@ -21,6 +25,7 @@ def get_session():
 def load_battery_params(setup_id: int) -> BatteryParams:
     """Fetches static battery parameters for a specific setup."""
     from models import Setup
+
     with Session(engine) as session:
         setup = session.get(Setup, setup_id)
         if not setup:
@@ -50,20 +55,19 @@ def load_data(setup_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
         price_sell_usd_per_kwh as price_sell
     FROM sensor_telemetry
     """
-    
+
     if setup_id:
         query_str += " WHERE setup_id = :setup_id"
-    
+
     query_str += " ORDER BY time ASC;"
 
     # Using the SQLAlchemy engine directly with Pandas
-    # This is efficient and uses the connection pool.
     with engine.connect() as conn:
         df_telemetry = pd.read_sql(
-            text(query_str), 
-            conn, 
+            text(query_str),
+            conn,
             params={"setup_id": setup_id} if setup_id else {},
-            index_col="time"
+            index_col="time",
         )
 
     if df_telemetry.empty:
@@ -82,23 +86,31 @@ def save_telemetry_data(df: pd.DataFrame, setup_id: int):
         return
 
     df_reset = df.reset_index()
-    if 'time' not in df_reset.columns and 'index' in df_reset.columns:
-        df_reset.rename(columns={'index': 'time'}, inplace=True)
-    
-    df_reset['setup_id'] = setup_id
+    if "time" not in df_reset.columns and "index" in df_reset.columns:
+        df_reset.rename(columns={"index": "time"}, inplace=True)
+
+    df_reset["setup_id"] = setup_id
 
     rename_map = {
-        'price_buy': 'price_buy_usd_per_kwh',
-        'price_sell': 'price_sell_usd_per_kwh'
+        "price_buy": "price_buy_usd_per_kwh",
+        "price_sell": "price_sell_usd_per_kwh",
     }
-    cols_to_keep = ['time', 'setup_id', 'load_kw', 'solar_kw', 'price_buy_usd_per_kwh', 'price_sell_usd_per_kwh', 'temp_c']
-    
+    cols_to_keep = [
+        "time",
+        "setup_id",
+        "load_kw",
+        "solar_kw",
+        "price_buy_usd_per_kwh",
+        "price_sell_usd_per_kwh",
+        "temp_c",
+    ]
+
     for old, new in rename_map.items():
         if old in df_reset.columns:
             df_reset.rename(columns={old: new}, inplace=True)
-            
+
     df_db_ready = df_reset[[c for c in cols_to_keep if c in df_reset.columns]]
-    
+
     _atomic_upsert(df_db_ready, "sensor_telemetry", ["time", "setup_id"])
 
 
@@ -108,10 +120,10 @@ def save_dispatch_plan(df: pd.DataFrame, setup_id: int):
         return
 
     df_reset = df.reset_index()
-    if 'time' not in df_reset.columns and 'index' in df_reset.columns:
-        df_reset.rename(columns={'index': 'time'}, inplace=True)
-    
-    df_reset['setup_id'] = setup_id
+    if "time" not in df_reset.columns and "index" in df_reset.columns:
+        df_reset.rename(columns={"index": "time"}, inplace=True)
+
+    df_reset["setup_id"] = setup_id
 
     df_db_ready = df_reset[
         [
@@ -143,13 +155,13 @@ def _atomic_upsert(df: pd.DataFrame, table_name: str, pk_cols: list[str]):
     records = df.values.tolist()
 
     try:
-        # We still use a raw psycopg connection here because the 'COPY' command
-        # is a PostgreSQL-specific feature that SQLAlchemy doesn't support natively
-        # with the same performance.
+        # Raw psycopg (v3) connection
         with psycopg.connect(DB_DSN) as conn:
             with conn.cursor() as cur:
                 temp_table = f"temp_{table_name}"
-                cur.execute(f"CREATE TEMP TABLE {temp_table} (LIKE {table_name} INCLUDING ALL) ON COMMIT DROP;")
+                cur.execute(
+                    f"CREATE TEMP TABLE {temp_table} (LIKE {table_name} INCLUDING ALL) ON COMMIT DROP;"
+                )
 
                 copy_query = f"COPY {temp_table} ({columns_str}) FROM STDIN"
                 with cur.copy(copy_query) as copy:
@@ -157,7 +169,9 @@ def _atomic_upsert(df: pd.DataFrame, table_name: str, pk_cols: list[str]):
                         copy.write_row(row)
 
                 update_cols = [col for col in df.columns if col not in pk_cols]
-                set_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_cols])
+                set_clause = ", ".join(
+                    [f"{col} = EXCLUDED.{col}" for col in update_cols]
+                )
                 pk_str = ", ".join(pk_cols)
 
                 upsert_query = f"""
@@ -168,7 +182,9 @@ def _atomic_upsert(df: pd.DataFrame, table_name: str, pk_cols: list[str]):
                 """
                 cur.execute(upsert_query)
                 conn.commit()
-                logger.info(f"✅ Successfully upserted {len(records)} rows into {table_name}.")
+                logger.info(
+                    f"✅ Successfully upserted {len(records)} rows into {table_name}."
+                )
 
     except psycopg.Error as e:
         logger.error(f"❌ Database error during upsert into {table_name}: {e}")

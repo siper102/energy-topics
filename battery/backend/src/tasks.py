@@ -1,7 +1,7 @@
 import os
 import logging
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Session
 from worker import celery_app
 from models import Job, Setup
@@ -19,7 +19,7 @@ from data.entsoe_e_data_provider import ENTSOEPriceProvider
 
 logger = logging.getLogger(__name__)
 
-ENTSOE_API_KEY = os.getenv("ENTSOE_API_KEY")
+ENTSOE_API_KEY = os.getenv("ENTSOE_API_KEY", "")
 
 
 def _run_ingestion(start_date: str, end_date: str, setup_id: int) -> pd.DataFrame:
@@ -118,7 +118,7 @@ def run_full_job_task(
             job = session.get(Job, job_id)
             if job:
                 job.status = "SUCCESS"
-                job.finished_at = datetime.utcnow()
+                job.finished_at = datetime.now(timezone.utc)
                 session.add(job)
                 session.commit()
 

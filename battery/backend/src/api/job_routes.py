@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 from worker import celery_app
 from celery.result import AsyncResult
-from sqlmodel import Session, select, func
+from sqlalchemy import func
+from sqlmodel import Session, select
 from database import get_session
 from models import Job, JobBase
 
