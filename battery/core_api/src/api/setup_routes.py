@@ -8,6 +8,9 @@ from pydantic import BaseModel
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Centralized DSN with correct container fallback
+DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@timescaledb:5432/battery")
+
 class SetupBase(BaseModel):
     name: str
     max_capacity_kwh: float
@@ -29,7 +32,7 @@ class Setup(SetupBase):
 
 @router.get("/", response_model=List[Setup])
 async def list_setups():
-    DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@localhost:5432/battery")
+    logger.info(f"🔍 Fetching all setups from database... (DSN: {DB_DSN.split('@')[-1]})")
     try:
         with psycopg.connect(DB_DSN) as conn:
             with conn.cursor() as cur:
@@ -39,6 +42,7 @@ async def list_setups():
                     FROM setups ORDER BY id ASC
                 """)
                 rows = cur.fetchall()
+                logger.info(f"✅ Found {len(rows)} setups.")
                 return [
                     Setup(
                         id=row[0], name=row[1], max_capacity_kwh=float(row[2]), 
@@ -49,12 +53,12 @@ async def list_setups():
                     ) for row in rows
                 ]
     except Exception as e:
-        logger.error(f"Failed to list setups: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Failed to list setups: {e}")
+        # Return full error to frontend for easier debugging during dev
+        raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
 
 @router.post("/", response_model=Setup)
 async def create_setup(setup: SetupCreate):
-    DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@localhost:5432/battery")
     try:
         with psycopg.connect(DB_DSN) as conn:
             with conn.cursor() as cur:
@@ -68,14 +72,14 @@ async def create_setup(setup: SetupCreate):
                       setup.peak_power_kw, setup.tilt, setup.azimuth))
                 new_id = cur.fetchone()[0]
                 conn.commit()
-                return Setup(id=new_id, **setup.dict())
+                logger.info(f"✅ Created new setup '{setup.name}' with ID {new_id}")
+                return Setup(id=new_id, **setup.model_dump() if hasattr(setup, 'model_dump') else setup.dict())
     except Exception as e:
-        logger.error(f"Failed to create setup: {e}")
+        logger.error(f"❌ Failed to create setup: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{setup_id}", response_model=Setup)
 async def get_setup(setup_id: int):
-    DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@localhost:5432/battery")
     try:
         with psycopg.connect(DB_DSN) as conn:
             with conn.cursor() as cur:
@@ -86,6 +90,7 @@ async def get_setup(setup_id: int):
                 """, (setup_id,))
                 row = cur.fetchone()
                 if not row:
+                    logger.warning(f"⚠️ Setup ID {setup_id} not found.")
                     raise HTTPException(status_code=404, detail="Setup not found")
                 return Setup(
                     id=row[0], name=row[1], max_capacity_kwh=float(row[2]), 
@@ -97,5 +102,5 @@ async def get_setup(setup_id: int):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get setup: {e}")
+        logger.error(f"❌ Failed to get setup: {e}")
         raise HTTPException(status_code=500, detail=str(e))

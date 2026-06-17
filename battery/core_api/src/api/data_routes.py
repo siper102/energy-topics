@@ -7,7 +7,7 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from data.extract_data import SensorETLPipeline
-from data.mock_energy_data_provider import MockLoadProvider
+from data.forecast_load_provider import ForecastLoadDataProvider
 from data.open_meteo_solar_provider import OpenMeteoSolarProvider
 from data.entsoe_e_data_provider import ENTSOEPriceProvider
 
@@ -51,7 +51,7 @@ def run_ingestion(start_date: str, end_date: str, setup_id: int):
 
         pipeline = SensorETLPipeline(
             db_dsn=DB_DSN,
-            load_provider=MockLoadProvider(),
+            load_provider=ForecastLoadDataProvider(lat=float(lat), lon=float(lon)),
             solar_provider=OpenMeteoSolarProvider(
                 lat=float(lat), 
                 lon=float(lon), 

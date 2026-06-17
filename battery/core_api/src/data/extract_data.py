@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import psycopg
 import pandas as pd
 from data.mock_energy_data_provider import MockLoadProvider
+from data.forecast_load_provider import ForecastLoadDataProvider
 from data.open_meteo_solar_provider import OpenMeteoSolarProvider
 from data.entsoe_e_data_provider import ENTSOEPriceProvider
 from data.energy_data_provider import LoadProvider, SolarProvider, PriceProvider

@@ -12,7 +12,7 @@ app = FastAPI(title="Battery Platform Core API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False, # Changed to False as "*" origins don't support credentials in many browsers
     allow_methods=["*"],
     allow_headers=["*"],
 )
