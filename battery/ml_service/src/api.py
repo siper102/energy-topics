@@ -7,10 +7,6 @@ from model_factory import LoadPredictor
 
 torch.serialization.add_safe_globals([LoadPredictor])
 
-# 1. Define Request/Response Models
-class PredictionRequest(BaseModel):
-    features_list: List[List[float]]
-
 class PredictionResponse(BaseModel):
     forecasts: List[float]
 
@@ -34,9 +30,9 @@ class BatteryMLService:
         print(f"✅ Loaded model and scaler from BentoML store: {self.bento_model.tag}")
 
     @bentoml.api
-    def predict(self, request: PredictionRequest) -> PredictionResponse:
+    def predict(self, features_list: List[List[float]]) -> PredictionResponse:
         """Batch point-estimate load forecast for multiple sets of features."""
-        feat_np = np.array(request.features_list, dtype=np.float32)
+        feat_np = np.array(features_list, dtype=np.float32)
         if self.scaler:
             feat_np = self.scaler.transform(feat_np)
         

@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 import pandas as pd
 import requests
 import os
 from data.energy_data_provider import LoadProvider
+
+logger = logging.getLogger(__name__)
 
 class ForecastLoadDataProvider(LoadProvider):
     """
@@ -57,9 +60,18 @@ class ForecastLoadDataProvider(LoadProvider):
 
     def _fetch_temperature_forecast(self, start_time: datetime, end_time: datetime) -> pd.DataFrame:
         """
-        Private helper to fetch temperature forecasts from Open-Meteo.
+        Private helper to fetch temperature data from Open-Meteo.
+        Automatically switches between Forecast and Archive APIs based on dates.
         """
-        url = "https://api.open-meteo.com/v1/forecast"
+        now = datetime.now()
+        # If the start_time is more than 14 days ago, we must use the Archive API
+        use_archive = (now - start_time).days > 14
+        
+        if use_archive:
+            url = "https://archive-api.open-meteo.com/v1/archive"
+        else:
+            url = "https://api.open-meteo.com/v1/forecast"
+            
         params = {
             "latitude": self.lat,
             "longitude": self.lon,
@@ -70,6 +82,7 @@ class ForecastLoadDataProvider(LoadProvider):
         }
         
         try:
+            logger.info(f"📡 Fetching temperature from {url} ({start_time.date()} to {end_time.date()})...")
             response = requests.get(url, params=params, timeout=10.0)
             response.raise_for_status()
             res_data = response.json()
@@ -82,4 +95,4 @@ class ForecastLoadDataProvider(LoadProvider):
             df.set_index("time", inplace=True)
             return df
         except Exception as e:
-            raise RuntimeError(f"Weather forecast fetch failed: {str(e)}")
+            raise RuntimeError(f"Weather data fetch failed ({'Archive' if use_archive else 'Forecast'}): {str(e)}")

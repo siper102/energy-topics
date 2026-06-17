@@ -36,7 +36,7 @@ def run_ingestion(start_date: str, end_date: str, setup_id: int):
         logger.error(error_msg)
         ingestion_status["status"] = "FAILURE"
         ingestion_status["message"] = error_msg
-        return
+        raise ValueError(error_msg)
 
     try:
         # Fetch setup parameters
@@ -77,7 +77,7 @@ def run_ingestion(start_date: str, end_date: str, setup_id: int):
             logger.warning(msg)
             ingestion_status["status"] = "FAILURE"
             ingestion_status["message"] = msg
-            return
+            raise ValueError(msg)
 
         pipeline.load(data, setup_id=setup_id)
         success_msg = f"Successfully ingested {len(data)} records for setup {setup_id} ({start_date} to {end_date})."
@@ -90,6 +90,7 @@ def run_ingestion(start_date: str, end_date: str, setup_id: int):
         logger.error(error_msg)
         ingestion_status["status"] = "FAILURE"
         ingestion_status["message"] = error_msg
+        raise
 
 @router.get("/ingest/status")
 async def get_ingest_status():
