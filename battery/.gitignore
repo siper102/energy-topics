@@ -34,3 +34,6 @@ ml_service/data/
 # VS Code
 .vscode/
 
+# pixi environments
+.pixi/*
+!.pixi/config.toml

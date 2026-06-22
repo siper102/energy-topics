@@ -4,30 +4,21 @@ This directory contains Jupyter notebooks for data analysis, model evaluation, a
 
 ## Setup
 
-This directory is managed by [uv](https://github.com/astral-sh/uv). 
+The workspace is managed globally by [pixi](https://pixi.sh/). All python dependencies, packages, and system-level solvers (like `ipopt`) are managed via the root `pixi.toml` file.
 
-To set up the environment:
-
-1.  **Install dependencies**:
-    ```bash
-    uv sync
-    ```
-
-2.  **Run Jupyter Lab/Notebook**:
-    You can run Jupyter within the `uv` environment:
-    ```bash
-    uv run jupyter lab
-    ```
-    (Note: You might need to add `jupyterlab` to the dependencies if you want to run it directly from here, or use a global installation that points to this venv's kernel.)
+To run Jupyter Lab:
+```bash
+pixi run notebook
+```
 
 ## Adding Dependencies
 
-To add new packages to the notebook environment:
-```bash
-uv add <package-name>
-```
+To add new packages to the environment, use pixi from the root directory:
+*   For conda packages: `pixi add <package-name>`
+*   For PyPI packages: `pixi add --pypi <package-name>`
 
 ## Notebooks
 
 - `price_spread_analysis.ipynb`: Analysis of energy price spreads.
 - `model_evaluation.ipynb`: Evaluation of machine learning models.
+- `optimization_routine.ipynb`: Demonstration of the stochastic battery dispatch optimization routine with GARCH price spread scenarios.

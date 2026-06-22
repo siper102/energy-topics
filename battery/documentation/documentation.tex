@@ -53,9 +53,9 @@ We are solving a Finite-Horizon Discrete-Time Optimal Control Problem. The goal 
     \item $P_{load,t}$: Household power demand at time $t$ (kW). Note: This is currently a point estimate from the ML prediction service.
     \item $P_{pv,t}$: Solar photovoltaic generation at time $t$ (kW).
     \item $\lambda^{DA}_t$: Day-Ahead electricity price at time $t$ (\$/kWh), fetched from ENTSO-E.
-    \item $\epsilon_{t,s}$: Intraday price spread (stochastic noise) at time $t$ under scenario $s$ (\$/kWh).
+    \item $\epsilon_{t,s}$: Intraday price spread (stochastic noise) at time $t$ under scenario $s$ (\$/kWh), simulated via an AR(1)-GARCH(1,1) process to capture volatility clustering.
     \item $\lambda^{buy}_{t,s}$: Price of purchasing electricity from the grid at time $t$ under scenario $s$ (\$/kWh). Defined as $\lambda^{buy}_{t,s} = \lambda^{DA}_t + \epsilon_{t,s}$.
-    \item $\lambda^{sell}_{t,s}$: Price of selling electricity to the grid at time $t$ under scenario $s$ (\$/kWh). Defined as $\lambda^{sell}_{t,s} = \lambda^{DA}_t + \epsilon_{t,s}$.
+    \item $\lambda^{sell}_{t,s}$: Price of selling electricity to the grid at time $t$ under scenario $s$ (\$/kWh). Defined as $\lambda^{sell}_{t,s} = 0.9 \cdot \lambda^{DA}_t + \epsilon_{t,s}$, which incorporates the 10\% transaction/selling discount.
 \end{itemize}
 
 \section{Decision Variables}
