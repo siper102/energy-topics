@@ -55,6 +55,33 @@ async def get_dashboard_data(setup_id: int, start_date: Optional[str] = None, en
             df_telemetry['time'] = pd.to_datetime(df_telemetry['time'])
             df_plans['target_time'] = pd.to_datetime(df_plans['target_time'])
             
+            if not df_telemetry.empty:
+                min_time = df_telemetry['time'].min()
+                max_time = df_telemetry['time'].max()
+                span_days = (max_time - min_time).days
+                
+                # Determine resampling rule
+                if span_days > 180:
+                    rule = "ME"  # Monthly (End of Month)
+                elif span_days > 30:
+                    rule = "W"   # Weekly
+                elif span_days > 7:
+                    rule = "D"   # Daily
+                else:
+                    rule = None
+                
+                if rule:
+                    # Resample telemetry
+                    df_telemetry = df_telemetry.set_index('time')
+                    df_telemetry = df_telemetry.resample(rule).mean()
+                    df_telemetry = df_telemetry.reset_index()
+                    
+                    # Resample plans
+                    if not df_plans.empty:
+                        df_plans = df_plans.set_index('target_time')
+                        df_plans = df_plans.resample(rule).mean()
+                        df_plans = df_plans.reset_index()
+            
             return {
                 "telemetry": df_telemetry.to_dict(orient="records"),
                 "plans": df_plans.to_dict(orient="records")
