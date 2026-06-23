@@ -40,6 +40,8 @@ CREATE TABLE sensor_telemetry (
     temp_c NUMERIC, -- Added for ML load prediction
     price_buy_usd_per_kwh NUMERIC NOT NULL,
     price_sell_usd_per_kwh NUMERIC NOT NULL,
+    realized_price_buy_usd_per_kwh NUMERIC,
+    realized_price_sell_usd_per_kwh NUMERIC,
     PRIMARY KEY (time, setup_id)
 );
 

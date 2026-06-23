@@ -1,11 +1,7 @@
 import os
 import logging
 from datetime import datetime
-from dotenv import load_dotenv
 import pandas as pd
-from data.forecast_load_provider import ForecastLoadDataProvider
-from data.open_meteo_solar_provider import OpenMeteoSolarProvider
-from data.entsoe_e_data_provider import ENTSOEPriceProvider
 from data.energy_data_provider import LoadProvider, SolarProvider, PriceProvider
 
 logging.basicConfig(
@@ -61,26 +57,3 @@ class SensorExtractPipeline:
             logger.error(f"Failed to extract and merge data: {e}")
             raise
 
-# ==========================================
-# EXECUTION BLOCK (FOR TESTING)
-# ==========================================
-if __name__ == "__main__":
-    load_dotenv()
-    
-    API_KEY = os.getenv("ENTSOE_API_KEY")
-    if not API_KEY:
-        logger.error("ENTSOE_API_KEY not found. Please set it in your .env file.")
-        exit(1)
-    
-    pipeline = SensorExtractPipeline(
-        load_provider=ForecastLoadDataProvider(lat=51.26, lon=6.84, ml_service_url=ML_SERVICE_URL),
-        solar_provider=OpenMeteoSolarProvider(lat=51.26, lon=6.84, peak_power_kw=5.0),
-        price_provider=ENTSOEPriceProvider(API_KEY)
-    )
-    
-    start = datetime(2025, 6, 1)
-    end = datetime(2025, 6, 2)
-    
-    data = pipeline.extract(start, end, res_minutes=60)
-    print("--- Extracted Data Preview ---")
-    print(data.head())

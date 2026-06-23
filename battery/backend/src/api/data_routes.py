@@ -29,7 +29,14 @@ async def get_dashboard_data(setup_id: int, start_date: Optional[str] = None, en
                 params_plans.extend([start_date, real_end])
             
             query_telemetry = f"""
-            SELECT time, load_kw, solar_kw, price_buy_usd_per_kwh, price_sell_usd_per_kwh 
+            SELECT 
+                time, 
+                load_kw, 
+                solar_kw, 
+                price_buy_usd_per_kwh, 
+                price_sell_usd_per_kwh,
+                COALESCE(realized_price_buy_usd_per_kwh, price_buy_usd_per_kwh) as realized_price_buy_usd_per_kwh,
+                COALESCE(realized_price_sell_usd_per_kwh, price_sell_usd_per_kwh) as realized_price_sell_usd_per_kwh
             FROM sensor_telemetry 
             {where_telemetry}
             ORDER BY time ASC;

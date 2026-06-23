@@ -94,6 +94,8 @@ def save_telemetry_data(df: pd.DataFrame, setup_id: int):
     rename_map = {
         "price_buy": "price_buy_usd_per_kwh",
         "price_sell": "price_sell_usd_per_kwh",
+        "realized_price_buy": "realized_price_buy_usd_per_kwh",
+        "realized_price_sell": "realized_price_sell_usd_per_kwh",
     }
     cols_to_keep = [
         "time",
@@ -102,6 +104,8 @@ def save_telemetry_data(df: pd.DataFrame, setup_id: int):
         "solar_kw",
         "price_buy_usd_per_kwh",
         "price_sell_usd_per_kwh",
+        "realized_price_buy_usd_per_kwh",
+        "realized_price_sell_usd_per_kwh",
         "temp_c",
     ]
 
