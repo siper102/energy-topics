@@ -1,5 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { setupService } from '../services/api';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { setupService } from "../services/api";
 
 interface Setup {
   id: number;
@@ -26,7 +32,9 @@ interface SetupContextType {
 
 const SetupContext = createContext<SetupContextType | undefined>(undefined);
 
-export const SetupProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const SetupProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [setups, setSetups] = useState<Setup[]>([]);
   const [activeSetup, setActiveSetup] = useState<Setup | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,8 +46,10 @@ export const SetupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setSetups(data);
       if (data.length > 0 && !activeSetup) {
         // Default to first setup or one from local storage
-        const savedId = localStorage.getItem('activeSetupId');
-        const initial = savedId ? data.find((s: Setup) => s.id === parseInt(savedId)) || data[0] : data[0];
+        const savedId = localStorage.getItem("activeSetupId");
+        const initial = savedId
+          ? data.find((s: Setup) => s.id === parseInt(savedId)) || data[0]
+          : data[0];
         setActiveSetup(initial);
       }
     } catch (error) {
@@ -53,15 +63,23 @@ export const SetupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const setActiveSetupId = (id: number) => {
-    const setup = setups.find(s => s.id === id);
+    const setup = setups.find((s) => s.id === id);
     if (setup) {
       setActiveSetup(setup);
-      localStorage.setItem('activeSetupId', id.toString());
+      localStorage.setItem("activeSetupId", id.toString());
     }
   };
 
   return (
-    <SetupContext.Provider value={{ setups, activeSetup, setActiveSetupId, loading, refreshSetups: fetchSetups }}>
+    <SetupContext.Provider
+      value={{
+        setups,
+        activeSetup,
+        setActiveSetupId,
+        loading,
+        refreshSetups: fetchSetups,
+      }}
+    >
       {children}
     </SetupContext.Provider>
   );
@@ -70,7 +88,7 @@ export const SetupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 export const useSetups = () => {
   const context = useContext(SetupContext);
   if (context === undefined) {
-    throw new Error('useSetups must be used within a SetupProvider');
+    throw new Error("useSetups must be used within a SetupProvider");
   }
   return context;
 };

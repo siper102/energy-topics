@@ -7,6 +7,7 @@ This directory contains Jupyter notebooks for data analysis, model evaluation, a
 The workspace is managed globally by [pixi](https://pixi.sh/). All python dependencies, packages, and system-level solvers (like `ipopt`) are managed via the root `pixi.toml` file.
 
 To run Jupyter Lab:
+
 ```bash
 pixi run notebook
 ```
@@ -14,8 +15,9 @@ pixi run notebook
 ## Adding Dependencies
 
 To add new packages to the environment, use pixi from the root directory:
-*   For conda packages: `pixi add <package-name>`
-*   For PyPI packages: `pixi add --pypi <package-name>`
+
+- For conda packages: `pixi add <package-name>`
+- For PyPI packages: `pixi add --pypi <package-name>`
 
 ## Notebooks
 

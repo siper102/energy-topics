@@ -29,6 +29,7 @@ class ENTSOEPriceProvider(PriceProvider):
         Fetches day-ahead prices and realized intraday prices from ENTSO-E and formats them.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         # ENTSO-E API expects timezone-aware timestamps.
@@ -46,13 +47,15 @@ class ENTSOEPriceProvider(PriceProvider):
             df_id = pd.DataFrame(id_prices, columns=["realized_price_buy"])
             df_id.index.name = "time"
         except Exception as e:
-            logger.warning(f"Failed to fetch intraday prices from ENTSO-E: {e}. Falling back to Day-Ahead prices.")
+            logger.warning(
+                f"Failed to fetch intraday prices from ENTSO-E: {e}. Falling back to Day-Ahead prices."
+            )
             df_id = pd.DataFrame(index=df_da.index)
             df_id["realized_price_buy"] = df_da["price_buy"]
 
         # 3. Merge DA and ID prices
         df = df_da.join(df_id, how="outer")
-        
+
         # Fill any gaps
         df["price_buy"] = df["price_buy"].ffill().bfill()
         df["realized_price_buy"] = df["realized_price_buy"].fillna(df["price_buy"])

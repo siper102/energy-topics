@@ -167,11 +167,11 @@ mod tests {
         let mut adjoints_z = vec![0.0; get_tape_len()];
         adjoints_z[z.index] = 1.0;
         backward(&mut adjoints_z);
-        
+
         // dz/dx = -sin(x)
         assert_abs_diff_eq!(adjoints_z[x.index], -1.5_f64.sin(), epsilon = 1e-9);
     }
-    
+
     #[test]
     fn test_tape_clears() {
         clear_tape();
@@ -179,11 +179,11 @@ mod tests {
         let _ = x * x;
         let len_before = get_tape_len();
         assert!(len_before > 0);
-        
+
         clear_tape();
         let len_after = get_tape_len();
         assert_eq!(len_after, 0);
-        
+
         // Ensure new variables can be created
         let y = AADVar::constant(2.0);
         assert_eq!(y.index, 0);

@@ -25,7 +25,9 @@ class Hyperparameters:
     grid_fee: float
 
 
-def generate_garch_scenarios(n_steps: int, n_scenarios: int = 10, scale_factor: float = 100.0) -> np.ndarray:
+def generate_garch_scenarios(
+    n_steps: int, n_scenarios: int = 10, scale_factor: float = 100.0
+) -> np.ndarray:
     """
     Generates AR(1)-GARCH(1,1) intraday price spread scenarios.
     Uses the parameters fitted in price_spread_analysis.ipynb.
@@ -35,23 +37,23 @@ def generate_garch_scenarios(n_steps: int, n_scenarios: int = 10, scale_factor: 
     omega = 0.0338
     alpha = 0.5178
     beta = 0.3994
-    
+
     uncond_var = omega / (1 - alpha - beta)
-    
+
     y = np.zeros((n_steps, n_scenarios))
     h = np.zeros((n_steps, n_scenarios))
     eps = np.zeros((n_steps, n_scenarios))
-    
+
     for s in range(n_scenarios):
         h[0, s] = uncond_var
         eps[0, s] = np.random.normal(0, np.sqrt(h[0, s]))
         y[0, s] = mu + eps[0, s]
-        
+
         for t in range(1, n_steps):
-            h[t, s] = omega + alpha * (eps[t-1, s]**2) + beta * h[t-1, s]
+            h[t, s] = omega + alpha * (eps[t - 1, s] ** 2) + beta * h[t - 1, s]
             eps[t, s] = np.random.normal(0, np.sqrt(h[t, s]))
-            y[t, s] = mu + phi * y[t-1, s] + eps[t, s]
-            
+            y[t, s] = mu + phi * y[t - 1, s] + eps[t, s]
+
     return y / scale_factor
 
 
@@ -112,8 +114,12 @@ def create_microgrid_model(
     model.P_solar = pyo.Param(model.T, initialize=time_series["solar_kw"].to_dict())
 
     # Keep original Day-Ahead price series for DB reporting
-    model.price_buy_da = pyo.Param(model.T, initialize=time_series["price_buy"].to_dict())
-    model.price_sell_da = pyo.Param(model.T, initialize=time_series["price_sell"].to_dict())
+    model.price_buy_da = pyo.Param(
+        model.T, initialize=time_series["price_buy"].to_dict()
+    )
+    model.price_sell_da = pyo.Param(
+        model.T, initialize=time_series["price_sell"].to_dict()
+    )
 
     ### Objective
     def objective_rule(m):
@@ -121,18 +127,25 @@ def create_microgrid_model(
         num_scenarios = len(m.S)
         for t in m.T:
             # Expected energy purchase/sale cost over all scenarios
-            expected_energy_cost = sum(
-                m.lambda_buy[t, s] * m.P_buy[t] - m.lambda_sell[t, s] * m.P_sell[t]
-                for s in m.S
-            ) / num_scenarios
-            
+            expected_energy_cost = (
+                sum(
+                    m.lambda_buy[t, s] * m.P_buy[t] - m.lambda_sell[t, s] * m.P_sell[t]
+                    for s in m.S
+                )
+                / num_scenarios
+            )
+
             # Grid usage fees (Network/Transaction costs)
             grid_usage_cost = hyper_params.grid_fee * (m.P_buy[t] + m.P_sell[t])
 
             # Battery degradation penalty
-            degradation = hyper_params.alpha * (m.P_charge[t] ** 2 + m.P_discharge[t] ** 2)
+            degradation = hyper_params.alpha * (
+                m.P_charge[t] ** 2 + m.P_discharge[t] ** 2
+            )
 
-            total_cost += (expected_energy_cost + grid_usage_cost) * delta_t + degradation
+            total_cost += (
+                expected_energy_cost + grid_usage_cost
+            ) * delta_t + degradation
         return total_cost
 
     model.cost = pyo.Objective(rule=objective_rule, sense=pyo.minimize)

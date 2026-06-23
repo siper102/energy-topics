@@ -24,6 +24,7 @@ app.include_router(setup_router, prefix="/api/setups", tags=["Setups"])
 app.include_router(data_router, prefix="/api/data", tags=["Data"])
 app.include_router(job_router, prefix="/api/jobs", tags=["Jobs"])
 
+
 @app.get("/")
 def read_root():
     return {"message": "Battery Optimization Unified Backend"}

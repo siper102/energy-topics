@@ -56,13 +56,13 @@ impl JumpDiffusionProcessTransformer {
         let dt_val = 1.0 / n_points as f64;
         let dt = T::from_f64(dt_val).unwrap();
         let dt_sqrt = dt.sqrt();
-        
+
         // This term corrects the drift to ensure the process is a martingale.
         // It accounts for the expected value of the log-normal jump size.
         let half = T::from_f64(0.5).unwrap();
         let drift_term = (mu_j + half * sigma_j.powi(2)).exp() - T::one();
         let jump_drift_correction = lambda_j * dt * drift_term;
-        
+
         // The Poisson distribution determines the number of jumps in a time step `dt`.
         // Its parameter (lambda * dt) must be f64.
         let lambda_f64 = lambda_j.to_f64().unwrap();
@@ -87,7 +87,7 @@ impl JumpDiffusionProcessTransformer {
             path[i] = f[i] * path[i].exp();
         }
     }
-    
+
     /// Simulates the Ornstein-Uhlenbeck with jumps process `V_t` using Euler-Maruyama.
     ///
     /// This function overwrites the input `path` in-place.
@@ -111,7 +111,7 @@ impl JumpDiffusionProcessTransformer {
             // The input `path` contains the standard normal variable Z_t for the Wiener process.
             let dw = path[t] * dt_sqrt;
             let jump_val = Self::sample_jump(rng, poisson_dist, mu_j, sigma_j);
-            
+
             // Euler-Maruyama step for the SDE of V_t.
             let dx = -kappa * p * dt + sigma_p * dw + jump_val - jump_drift_correction;
             path[t] = p + dx;
@@ -133,7 +133,7 @@ impl JumpDiffusionProcessTransformer {
             let n_jumps_t = T::from_f64(n_jumps).unwrap();
             let z: f64 = rng.sample(StandardNormal);
             let z_t = T::from_f64(z).unwrap();
-            
+
             (mu * n_jumps_t) + (z_t * (sigma * n_jumps_t.sqrt()))
         } else {
             // No jumps in this time step.

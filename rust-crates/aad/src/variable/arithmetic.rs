@@ -1,10 +1,10 @@
 
 //! # Arithmetic Operator Overloading for `AADVar`
-//! 
+//!
 //! This module implements the standard arithmetic traits from `std::ops` (e.g., `Add`,
 //! Mul`, `Sub`, `Div`) for the `AADVar` type. This is what allows `AADVar`s to be
 //! used in mathematical expressions with natural syntax (e.g., `a + b * c`).
-//! 
+//!
 //! Each implementation calculates the resulting value and pushes the corresponding
 //! operation and its derivatives (weights) onto the AAD tape.
 

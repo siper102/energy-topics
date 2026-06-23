@@ -11,6 +11,7 @@ import bentoml
 # Import from local model_factory
 from model_factory import create_load_predictor
 
+
 def train_model(data_path: str = "data/training_data.parquet"):
     """
     Core training logic: Loads data, scales, trains, and returns (model, scaler).
@@ -20,14 +21,14 @@ def train_model(data_path: str = "data/training_data.parquet"):
 
     print(f"📂 Loading training data from {data_path}...")
     df = pd.read_parquet(data_path)
-    
+
     # 1. Feature Selection
-    feature_cols = ['temp_c', 'hour', 'dayofweek', 'month']
-    target_col = 'load_kw'
-    
+    feature_cols = ["temp_c", "hour", "dayofweek", "month"]
+    target_col = "load_kw"
+
     X = df[feature_cols].values.astype(np.float32)
     y = df[target_col].values.reshape(-1, 1).astype(np.float32)
-    
+
     # 2. Scaling
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
@@ -57,12 +58,15 @@ def train_model(data_path: str = "data/training_data.parquet"):
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
-        
+
         if (epoch + 1) % 5 == 0:
-            print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss/len(train_loader):.4f}")
+            print(
+                f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss/len(train_loader):.4f}"
+            )
 
     model.eval()
     return model, scaler
+
 
 def run_ml_pipeline(data_path: str = "data/training_data.parquet"):
     """
@@ -77,8 +81,9 @@ def run_ml_pipeline(data_path: str = "data/training_data.parquet"):
         custom_objects={"scaler": scaler},
     ) as bento_model:
         torch.save(model, bento_model.path_of("model.pth"))
-    
+
     print("✅ Model saved to BentoML store as 'battery_load_predictor'.")
+
 
 if __name__ == "__main__":
     run_ml_pipeline()

@@ -1,0 +1,30 @@
+repos:
+  # 1. Standard Git & General checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  # 2. Python backend linting and formatting (using Ruff)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.8
+    hooks:
+      # Linter & auto-fixer
+      - id: ruff
+        args: [ --fix ]
+      # Formatter (replaces black)
+      - id: ruff-format
+
+  # 3. Frontend TypeScript & CSS formatting (using Prettier)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, css, html, json, markdown]
+        additional_dependencies:
+          - prettier@3.1.0

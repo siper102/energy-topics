@@ -8,6 +8,7 @@ from models import Setup, SetupBase
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
 @router.get("/", response_model=List[Setup])
 async def list_setups(session: Session = Depends(get_session)):
     try:
@@ -17,6 +18,7 @@ async def list_setups(session: Session = Depends(get_session)):
     except Exception as e:
         logger.error(f"Failed to list setups: {e}")
         raise HTTPException(status_code=500, detail="Database Error")
+
 
 @router.post("/", response_model=Setup)
 async def create_setup(setup_data: SetupBase, session: Session = Depends(get_session)):
@@ -29,6 +31,7 @@ async def create_setup(setup_data: SetupBase, session: Session = Depends(get_ses
     except Exception as e:
         logger.error(f"Failed to create setup: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{setup_id}", response_model=Setup)
 async def get_setup(setup_id: int, session: Session = Depends(get_session)):

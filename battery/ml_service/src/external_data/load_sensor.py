@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 
+
 class LoadSensor:
     """
     Generates synthetic load data based on weather and temporal features.
     Logic: Load = Base + Activity(Time) + Thermal(Temp) + Noise
     """
+
     def __init__(self, base_load: float = 0.5):
         self.base_load = base_load
 
@@ -16,15 +18,15 @@ class LoadSensor:
         n = len(df)
         hour = df.index.hour
         dayofweek = df.index.dayofweek
-        temp = df['temp_c'].values
+        temp = df["temp_c"].values
 
         # 1. Activity Pattern (Diurnal)
         activity = np.zeros(n)
         activity += np.where((hour >= 7) & (hour <= 9), 2.0, 0)
         activity += np.where((hour >= 17) & (hour <= 22), 3.0, 0)
         activity += np.where((hour > 9) & (hour < 17), 1.0, 0)
-        
-        is_weekend = (dayofweek >= 5)
+
+        is_weekend = dayofweek >= 5
         activity = np.where(is_weekend, activity * 0.8 + 0.5, activity)
 
         # 2. Thermal Component
@@ -46,5 +48,5 @@ class LoadSensor:
         noise = np.zeros(n)
         epsilon = np.random.normal(0, sigma, n)
         for i in range(1, n):
-            noise[i] = phi * noise[i-1] + epsilon[i]
+            noise[i] = phi * noise[i - 1] + epsilon[i]
         return noise

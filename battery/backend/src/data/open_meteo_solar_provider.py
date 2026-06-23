@@ -9,7 +9,15 @@ class OpenMeteoSolarProvider(SolarProvider):
     Fetches weather data from Open-Meteo.
     Calculates plane-of-array tilted irradiance and provides temperature.
     """
-    def __init__(self, lat: float, lon: float, peak_power_kw: float, tilt: float = 35, azimuth: float = 0):
+
+    def __init__(
+        self,
+        lat: float,
+        lon: float,
+        peak_power_kw: float,
+        tilt: float = 35,
+        azimuth: float = 0,
+    ):
         self.lat = lat
         self.lon = lon
         self.peak_power_kw = peak_power_kw
@@ -18,7 +26,9 @@ class OpenMeteoSolarProvider(SolarProvider):
         # Open-Meteo archive API
         self.url = "https://archive-api.open-meteo.com/v1/archive"
 
-    def fetch_data(self, start_time: datetime, end_time: datetime, resolution_minutes: int = 60) -> pd.DataFrame:
+    def fetch_data(
+        self, start_time: datetime, end_time: datetime, resolution_minutes: int = 60
+    ) -> pd.DataFrame:
         # 1. Map parameters to Open-Meteo's format
         start_str = start_time.strftime("%Y-%m-%d")
         end_str = end_time.strftime("%Y-%m-%d")
@@ -30,28 +40,30 @@ class OpenMeteoSolarProvider(SolarProvider):
             "hourly": "global_tilted_irradiance,temperature_2m",
             "tilt": self.tilt,
             "azimuth": self.azimuth,
-            "timezone": "UTC"
+            "timezone": "UTC",
         }
 
         response = requests.get(self.url, params=params)
         if response.status_code != 200:
             raise RuntimeError(f"Open-Meteo API failed: {response.text}")
-            
+
         res_data = response.json()
         hourly = res_data["hourly"]
 
         # 2. Parse into DataFrame
-        df = pd.DataFrame({
-            "time": pd.to_datetime(hourly["time"]),
-            "gti": hourly["global_tilted_irradiance"],
-            "temp_c": hourly["temperature_2m"]
-        })
+        df = pd.DataFrame(
+            {
+                "time": pd.to_datetime(hourly["time"]),
+                "gti": hourly["global_tilted_irradiance"],
+                "temp_c": hourly["temperature_2m"],
+            }
+        )
         df.set_index("time", inplace=True)
 
         # 3. Convert Irradiance to Power (kW)
-        loss_factor = 0.86 
+        loss_factor = 0.86
         df["solar_kw"] = (df["gti"] / 1000.0) * self.peak_power_kw * loss_factor
-        
+
         # 4. Clean up, filter to requested window, and match resolution
         df_final = df[["solar_kw", "temp_c"]].loc[start_time:end_time]
         freq = f"{resolution_minutes}min"

@@ -12,30 +12,31 @@ The intrinsic value of this agreement is driven by the **Spark Spread**: the dif
 
 The model employs Monte Carlo simulation to generate future price scenarios for the underlying commodities (Natural Gas and Electricity).
 
--   **Price Sampling**:
-    -   **Natural Gas ($G_t$)**: Modeled using a Geometric Brownian Motion (GBM) process, suitable for commodities with a stochastic, trending behavior.
-    -   **Electricity ($P_t$)**: Modeled using a Mean-Reverting Jump Diffusion (MRJD) process, capturing the characteristic spikes and mean-reverting tendencies of electricity prices, in addition to stochastic jumps.
-    -   **Correlation**: The stochastic drivers of Gas and Power prices are correlated, reflecting their economic interdependency.
+- **Price Sampling**:
 
--   **Profit Calculation**:
-    Daily profits are calculated based on the simulated spark spread, which is the difference between the revenue from selling electricity and the cost of purchasing natural gas, adjusted for the plant's heat rate (efficiency). The model also incorporates operational constraints and costs of the power plant, such as start-up costs, to determine the optimal dispatch strategy (when to run the plant) and thus the resulting profits for each simulated path.
+  - **Natural Gas ($G_t$)**: Modeled using a Geometric Brownian Motion (GBM) process, suitable for commodities with a stochastic, trending behavior.
+  - **Electricity ($P_t$)**: Modeled using a Mean-Reverting Jump Diffusion (MRJD) process, capturing the characteristic spikes and mean-reverting tendencies of electricity prices, in addition to stochastic jumps.
+  - **Correlation**: The stochastic drivers of Gas and Power prices are correlated, reflecting their economic interdependency.
+
+- **Profit Calculation**:
+  Daily profits are calculated based on the simulated spark spread, which is the difference between the revenue from selling electricity and the cost of purchasing natural gas, adjusted for the plant's heat rate (efficiency). The model also incorporates operational constraints and costs of the power plant, such as start-up costs, to determine the optimal dispatch strategy (when to run the plant) and thus the resulting profits for each simulated path.
 
 ## Project Structure
 
--   `src/python/`: Contains Python scripts, including the main Jupyter notebook for valuation analysis (`valuation_tutorial.ipynb`) and Python model wrappers (`models/tolling.py`).
--   `src/rust/tolling_agreement_valuation/`: The Rust crate implementing the core valuation logic. This provides the performance-critical calculations.
--   `rust-crates/aad/`: An auxiliary Rust crate likely used by the `tolling_agreement_valuation` crate, possibly for automatic differentiation or similar functionalities.
--   `latex/`: LaTeX source files and generated PDF documentation for the tolling agreement.
--   `Justfile`: Defines convenient commands for project setup, building, and running.
+- `src/python/`: Contains Python scripts, including the main Jupyter notebook for valuation analysis (`valuation_tutorial.ipynb`) and Python model wrappers (`models/tolling.py`).
+- `src/rust/tolling_agreement_valuation/`: The Rust crate implementing the core valuation logic. This provides the performance-critical calculations.
+- `rust-crates/aad/`: An auxiliary Rust crate likely used by the `tolling_agreement_valuation` crate, possibly for automatic differentiation or similar functionalities.
+- `latex/`: LaTeX source files and generated PDF documentation for the tolling agreement.
+- `Justfile`: Defines convenient commands for project setup, building, and running.
 
 ## Getting Started
 
 ### Prerequisites
 
--   Rust (install via `rustup`)
--   Python 3.13+
--   `uv` (install via `pip install uv`)
--   `just` (install via `cargo install just`)
+- Rust (install via `rustup`)
+- Python 3.13+
+- `uv` (install via `pip install uv`)
+- `just` (install via `cargo install just`)
 
 ### Setup
 
@@ -46,6 +47,7 @@ just setup
 ```
 
 This command will:
+
 1.  Synchronize Python dependencies using `uv`.
 2.  Build the `tolling_agreement_valuation` Rust crate.
 

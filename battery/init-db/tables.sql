@@ -25,7 +25,7 @@ CREATE TABLE setups (
 
 -- Seed initial setups
 INSERT INTO setups (name, max_capacity_kwh, max_power_kw, efficiency_charge, efficiency_discharge, initial_soc_kwh, lat, lon, peak_power_kw, tilt, azimuth)
-VALUES 
+VALUES
     ('Default Setup', 13.5, 5.0, 0.95, 0.95, 0.0, 51.26, 6.84, 5.0, 35, 0),
     ('Large Battery (Tesla Megapack)', 100.0, 25.0, 0.98, 0.98, 0.0, 51.26, 6.84, 15.0, 35, 0);
 

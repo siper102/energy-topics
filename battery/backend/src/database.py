@@ -1,12 +1,10 @@
-from datetime import datetime, timedelta
 import pandas as pd
-from dataclasses import dataclass
 from optimization.model_factory import BatteryParams
 import os
 import psycopg
 import logging
 from sqlalchemy import text
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +16,11 @@ DB_DSN = os.getenv("DB_DSN", "postgresql://postgres:postgres@timescaledb:5432/ba
 engine_url = DB_DSN.replace("postgresql://", "postgresql+psycopg://")
 engine = create_engine(engine_url)
 
+
 def get_session():
     with Session(engine) as session:
         yield session
+
 
 def load_battery_params(setup_id: int) -> BatteryParams:
     """Fetches static battery parameters for a specific setup."""
@@ -46,12 +46,12 @@ def load_data(setup_id: int = None) -> tuple[pd.DataFrame, BatteryParams]:
     Uses the SQLAlchemy engine for connection pooling.
     """
     query_str = """
-    SELECT 
-        time, 
-        load_kw, 
-        solar_kw, 
+    SELECT
+        time,
+        load_kw,
+        solar_kw,
         temp_c,
-        price_buy_usd_per_kwh as price_buy, 
+        price_buy_usd_per_kwh as price_buy,
         price_sell_usd_per_kwh as price_sell
     FROM sensor_telemetry
     """

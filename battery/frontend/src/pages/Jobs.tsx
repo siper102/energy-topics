@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { jobService } from '../services/api';
-import Dashboard from './Dashboard';
-import { useNavigate } from 'react-router-dom';
-import { useSetups } from '../context/SetupContext';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { jobService } from "../services/api";
+import Dashboard from "./Dashboard";
+import { useNavigate } from "react-router-dom";
+import { useSetups } from "../context/SetupContext";
 
 interface Job {
   id: number;
@@ -26,15 +26,15 @@ const Jobs: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isSetupCollapsed, setIsSetupCollapsed] = useState(true);
-  
+
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(7); // default weekly
   const [total, setTotal] = useState(0);
-  
+
   // Form state
-  const [startDate, setStartDate] = useState('2025-06-01');
-  const [endDate, setEndDate] = useState('2025-06-05');
+  const [startDate, setStartDate] = useState("2025-06-01");
+  const [endDate, setEndDate] = useState("2025-06-05");
   const [alpha, setAlpha] = useState(0.001);
   const [gridFee, setGridFee] = useState(0.01);
   const [submitting, setSubmitting] = useState(false);
@@ -48,12 +48,11 @@ const Jobs: React.FC = () => {
       setJobs(data.jobs);
       setTotal(data.total);
     } catch (error) {
-      console.error('Failed to fetch jobs:', error);
+      console.error("Failed to fetch jobs:", error);
     } finally {
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     fetchJobs();
@@ -63,19 +62,23 @@ const Jobs: React.FC = () => {
 
   const stats = useMemo(() => {
     if (jobs.length === 0) return null;
-    const successfulJobs = jobs.filter(j => j.status === 'SUCCESS' && j.net_profit != null);
+    const successfulJobs = jobs.filter(
+      (j) => j.status === "SUCCESS" && j.net_profit != null,
+    );
     if (successfulJobs.length === 0) return null;
-    
-    const avgProfit = successfulJobs.reduce((acc, j) => acc + (j.net_profit || 0), 0) / successfulJobs.length;
-    
+
+    const avgProfit =
+      successfulJobs.reduce((acc, j) => acc + (j.net_profit || 0), 0) /
+      successfulJobs.length;
+
     // Find time range of current jobs
-    const dates = jobs.map(j => new Date(j.start_date).getTime());
+    const dates = jobs.map((j) => new Date(j.start_date).getTime());
     const minDate = new Date(Math.min(...dates));
     const maxDate = new Date(Math.max(...dates));
-    
+
     return {
       avgProfit,
-      range: `${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`
+      range: `${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`,
     };
   }, [jobs]);
 
@@ -89,19 +92,22 @@ const Jobs: React.FC = () => {
   }, [selectedJob, isClosing]);
 
   // Close modal on ESC key
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      handleCloseModal();
-    }
-  }, [handleCloseModal]);
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleCloseModal();
+      }
+    },
+    [handleCloseModal],
+  );
 
   useEffect(() => {
     if (selectedJob) {
-      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener("keydown", handleKeyDown);
     } else {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     }
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedJob, handleKeyDown]);
 
   const handleTrigger = async (e: React.FormEvent) => {
@@ -109,83 +115,103 @@ const Jobs: React.FC = () => {
     if (!activeSetup) return;
     setSubmitting(true);
     try {
-      await jobService.triggerFullJob(startDate, endDate, activeSetup.id, alpha, gridFee);
+      await jobService.triggerFullJob(
+        startDate,
+        endDate,
+        activeSetup.id,
+        alpha,
+        gridFee,
+      );
       setShowTriggerForm(false);
       setPage(1); // Reset to first page to see the new job
       fetchJobs();
     } catch (error) {
-      console.error('Failed to trigger job:', error);
-      alert('Failed to trigger job');
+      console.error("Failed to trigger job:", error);
+      alert("Failed to trigger job");
     } finally {
       setSubmitting(false);
     }
   };
 
   const cardStyle: React.CSSProperties = {
-    background: '#fff',
-    border: '1px solid #e1e4e8',
-    borderRadius: '12px',
-    padding: '1.5rem',
-    marginBottom: '1rem',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    background: "#fff",
+    border: "1px solid #e1e4e8",
+    borderRadius: "12px",
+    padding: "1.5rem",
+    marginBottom: "1rem",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   };
 
   const statusBadgeStyle = (status: string): React.CSSProperties => {
-    let color = '#666';
-    let bg = '#eee';
-    if (status === 'SUCCESS') { color = '#155724'; bg = '#d4edda'; }
-    if (status === 'FAILURE') { color = '#721c24'; bg = '#f8d7da'; }
-    if (status === 'RUNNING') { color = '#856404'; bg = '#fff3cd'; }
-    
+    let color = "#666";
+    let bg = "#eee";
+    if (status === "SUCCESS") {
+      color = "#155724";
+      bg = "#d4edda";
+    }
+    if (status === "FAILURE") {
+      color = "#721c24";
+      bg = "#f8d7da";
+    }
+    if (status === "RUNNING") {
+      color = "#856404";
+      bg = "#fff3cd";
+    }
+
     return {
-      padding: '0.25rem 0.75rem',
-      borderRadius: '20px',
-      fontSize: '0.85rem',
-      fontWeight: 'bold',
+      padding: "0.25rem 0.75rem",
+      borderRadius: "20px",
+      fontSize: "0.85rem",
+      fontWeight: "bold",
       backgroundColor: bg,
       color: color,
-      textTransform: 'uppercase'
+      textTransform: "uppercase",
     };
   };
 
   const modalOverlayStyle: React.CSSProperties = {
-    position: 'fixed',
+    position: "fixed",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 1000,
-    padding: '2rem',
-    backdropFilter: 'blur(4px)',
-    animation: isClosing ? 'modalFadeOut 0.25s ease-in forwards' : 'modalFadeIn 0.25s ease-out forwards'
+    padding: "2rem",
+    backdropFilter: "blur(4px)",
+    animation: isClosing
+      ? "modalFadeOut 0.25s ease-in forwards"
+      : "modalFadeIn 0.25s ease-out forwards",
   };
 
   const modalContentStyle: React.CSSProperties = {
-    background: '#f5f7f9',
-    width: '100%',
-    maxWidth: '1200px',
-    maxHeight: '90vh',
-    borderRadius: '16px',
-    overflowY: 'auto',
-    position: 'relative',
-    padding: '2rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    animation: isClosing ? 'modalSlideOut 0.25s ease-in forwards' : 'modalSlideIn 0.25s ease-out forwards'
+    background: "#f5f7f9",
+    width: "100%",
+    maxWidth: "1200px",
+    maxHeight: "90vh",
+    borderRadius: "16px",
+    overflowY: "auto",
+    position: "relative",
+    padding: "2rem",
+    boxShadow:
+      "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+    animation: isClosing
+      ? "modalSlideOut 0.25s ease-in forwards"
+      : "modalSlideIn 0.25s ease-out forwards",
   };
 
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem' }}>
+    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "2rem" }}>
       <style>{`
         @keyframes modalFadeIn {
           from { opacity: 0; }
@@ -237,100 +263,228 @@ const Jobs: React.FC = () => {
       {setupLoading ? (
         <p>Loading setups...</p>
       ) : !activeSetup ? (
-        <div style={{ textAlign: 'center', padding: '3rem', background: '#fff', borderRadius: '12px', border: '1px solid #e1e4e8' }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "3rem",
+            background: "#fff",
+            borderRadius: "12px",
+            border: "1px solid #e1e4e8",
+          }}
+        >
           <h2>No Setup Active</h2>
           <p>Please create or select a setup to view operations.</p>
         </div>
       ) : (
         <>
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <header
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2rem",
+            }}
+          >
             <div>
               <h1 style={{ margin: 0 }}>Operations: {activeSetup.name}</h1>
-              <p style={{ color: '#666', margin: 0 }}>Manage data ingestion and optimization for this setup.</p>
+              <p style={{ color: "#666", margin: 0 }}>
+                Manage data ingestion and optimization for this setup.
+              </p>
             </div>
-            <button 
+            <button
               onClick={() => setShowTriggerForm(!showTriggerForm)}
               style={{
-                padding: '0.6rem 1.2rem',
-                background: '#3498db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
+                padding: "0.6rem 1.2rem",
+                background: "#3498db",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "bold",
               }}
             >
-              {showTriggerForm ? 'Cancel' : 'Trigger New Job'}
+              {showTriggerForm ? "Cancel" : "Trigger New Job"}
             </button>
           </header>
 
           {stats && !showTriggerForm && (
-            <div style={{ 
-              background: '#ebf8ff', 
-              border: '1px solid #bee3f8', 
-              padding: '1rem 1.5rem', 
-              borderRadius: '12px', 
-              marginBottom: '1.5rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div style={{ color: '#2b6cb0', fontWeight: 'bold', fontSize: '1rem' }}>
-                Current View: <span style={{ color: '#2d3748' }}>{stats.range}</span>
+            <div
+              style={{
+                background: "#ebf8ff",
+                border: "1px solid #bee3f8",
+                padding: "1rem 1.5rem",
+                borderRadius: "12px",
+                marginBottom: "1.5rem",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  color: "#2b6cb0",
+                  fontWeight: "bold",
+                  fontSize: "1rem",
+                }}
+              >
+                Current View:{" "}
+                <span style={{ color: "#2d3748" }}>{stats.range}</span>
               </div>
-              <div style={{ color: '#2b6cb0', fontWeight: 'bold', fontSize: '1rem' }}>
-                Avg. Net Profit: <span style={{ color: stats.avgProfit >= 0 ? '#38a169' : '#e53e3e' }}>${stats.avgProfit.toFixed(2)}</span>
+              <div
+                style={{
+                  color: "#2b6cb0",
+                  fontWeight: "bold",
+                  fontSize: "1rem",
+                }}
+              >
+                Avg. Net Profit:{" "}
+                <span
+                  style={{
+                    color: stats.avgProfit >= 0 ? "#38a169" : "#e53e3e",
+                  }}
+                >
+                  ${stats.avgProfit.toFixed(2)}
+                </span>
               </div>
             </div>
           )}
 
           {/* Setup Parameters Overview - Hidden when creating a new job to focus on inputs */}
           {!showTriggerForm && (
-            <section style={{ 
-              background: '#fff', 
-              border: '1px solid #e1e4e8', 
-              borderRadius: '12px', 
-              padding: '1.25rem', 
-              marginBottom: '2rem',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-            }}>
-              <div 
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+            <section
+              style={{
+                background: "#fff",
+                border: "1px solid #e1e4e8",
+                borderRadius: "12px",
+                padding: "1.25rem",
+                marginBottom: "2rem",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                }}
                 onClick={() => setIsSetupCollapsed(!isSetupCollapsed)}
               >
-                <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "0.9rem",
+                    color: "#4a5568",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
                   Setup Configuration
                 </h3>
-                <span style={{ fontSize: '0.8rem', color: '#3498db', fontWeight: 'bold' }}>
-                  {isSetupCollapsed ? 'Show Details ↓' : 'Hide Details ↑'}
+                <span
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#3498db",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {isSetupCollapsed ? "Show Details ↓" : "Hide Details ↑"}
                 </span>
               </div>
-              
+
               {!isSetupCollapsed && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', marginTop: '1.25rem' }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                    gap: "1.5rem",
+                    marginTop: "1.25rem",
+                  }}
+                >
                   <div title="The total amount of energy the battery can store in kilowatt-hours.">
-                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Battery Capacity</div>
-                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_capacity_kwh} kWh</div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#718096",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      Battery Capacity
+                    </div>
+                    <div style={{ fontWeight: "600", color: "#2d3748" }}>
+                      {activeSetup.max_capacity_kwh} kWh
+                    </div>
                   </div>
                   <div title="The maximum rate at which the battery can charge or discharge in kilowatts.">
-                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Max Power</div>
-                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.max_power_kw} kW</div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#718096",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      Max Power
+                    </div>
+                    <div style={{ fontWeight: "600", color: "#2d3748" }}>
+                      {activeSetup.max_power_kw} kW
+                    </div>
                   </div>
                   <div title="The round-trip efficiency for charging and discharging. 95% means 5% of energy is lost as heat.">
-                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Efficiency (C/D)</div>
-                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.efficiency_charge * 100}% / {activeSetup.efficiency_discharge * 100}%</div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#718096",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      Efficiency (C/D)
+                    </div>
+                    <div style={{ fontWeight: "600", color: "#2d3748" }}>
+                      {activeSetup.efficiency_charge * 100}% /{" "}
+                      {activeSetup.efficiency_discharge * 100}%
+                    </div>
                   </div>
                   <div title="The maximum potential output of the solar panels under ideal conditions in kilowatts peak.">
-                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Solar Peak</div>
-                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.peak_power_kw} kWp</div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#718096",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      Solar Peak
+                    </div>
+                    <div style={{ fontWeight: "600", color: "#2d3748" }}>
+                      {activeSetup.peak_power_kw} kWp
+                    </div>
                   </div>
                   <div title="The geographic coordinates of the installation, used for solar irradiance calculation.">
-                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Location</div>
-                    <div style={{ fontWeight: '600', color: '#2d3748' }}>{activeSetup.lat}, {activeSetup.lon}</div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#718096",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      Location
+                    </div>
+                    <div style={{ fontWeight: "600", color: "#2d3748" }}>
+                      {activeSetup.lat}, {activeSetup.lon}
+                    </div>
                   </div>
                   <div title="Tilt is the angle from the ground (0-90°). Azimuth is the direction (0° = South, -90° = East).">
-                    <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Orientation</div>
-                    <div style={{ fontWeight: '600', color: '#2d3748' }}>Tilt: {activeSetup.tilt}°, Azi: {activeSetup.azimuth}°</div>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#718096",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      Orientation
+                    </div>
+                    <div style={{ fontWeight: "600", color: "#2d3748" }}>
+                      Tilt: {activeSetup.tilt}°, Azi: {activeSetup.azimuth}°
+                    </div>
                   </div>
                 </div>
               )}
@@ -338,241 +492,443 @@ const Jobs: React.FC = () => {
           )}
 
           {showTriggerForm && (
-            <form onSubmit={handleTrigger} style={{ background: '#f8f9fa', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid #dee2e6' }}>
+            <form
+              onSubmit={handleTrigger}
+              style={{
+                background: "#f8f9fa",
+                padding: "2rem",
+                borderRadius: "12px",
+                marginBottom: "2rem",
+                border: "1px solid #dee2e6",
+              }}
+            >
               <h3>Configure Integrated Job ({activeSetup.name})</h3>
-              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>This will trigger both data ingestion and battery optimization for the selected range using this setup's parameters.</p>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Start Date</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} required />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>End Date</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} required />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Alpha (Degradation)</label>
-              <input type="number" step="0.0001" value={alpha} onChange={e => setAlpha(Number(e.target.value))} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Grid Fee (USD/kWh)</label>
-              <input type="number" step="0.01" value={gridFee} onChange={e => setGridFee(Number(e.target.value))} style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ccc' }} />
-            </div>
-          </div>
-          
-          <button 
-            type="submit" 
-            disabled={submitting}
-            style={{ 
-              width: '100%', 
-              padding: '0.8rem', 
-              background: '#2ecc71', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '6px', 
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              fontWeight: 'bold',
-              fontSize: '1rem'
-            }}
-          >
-            {submitting ? 'Starting...' : 'Run Ingestion + Optimization'}
-          </button>
-        </form>
-      )}
-
-      {/* View Options and Pagination Controls */}
-      {!showTriggerForm && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div className="view-toggle" style={{ display: 'flex' }}>
-            <button 
-              className={pageSize === 7 ? 'active' : ''} 
-              onClick={() => { setPageSize(7); setPage(1); }}
-            >
-              Weekly View
-            </button>
-            <button 
-              className={pageSize === 30 ? 'active' : ''} 
-              onClick={() => { setPageSize(30); setPage(1); }}
-            >
-              Monthly View
-            </button>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.9rem', color: '#666' }}>
-              Page {page} of {totalPages || 1} ({total} total jobs)
-            </span>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                className="pagination-btn"
-                disabled={page <= 1 || loading}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+              <p
                 style={{
-                  padding: '0.4rem 0.8rem',
-                  border: '1px solid #e1e4e8',
-                  borderRadius: '6px',
-                  background: '#fff',
-                  cursor: 'pointer'
+                  color: "#666",
+                  fontSize: "0.9rem",
+                  marginBottom: "1.5rem",
                 }}
               >
-                Previous
-              </button>
-              <button 
-                className="pagination-btn"
-                disabled={page >= totalPages || loading}
-                onClick={() => setPage(p => p + 1)}
+                This will trigger both data ingestion and battery optimization
+                for the selected range using this setup's parameters.
+              </p>
+
+              <div
                 style={{
-                  padding: '0.4rem 0.8rem',
-                  border: '1px solid #e1e4e8',
-                  borderRadius: '6px',
-                  background: '#fff',
-                  cursor: 'pointer'
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1.5rem",
+                  marginBottom: "1.5rem",
                 }}
               >
-                Next
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                    }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                    }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Alpha (Degradation)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={alpha}
+                    onChange={(e) => setAlpha(Number(e.target.value))}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Grid Fee (USD/kWh)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={gridFee}
+                    onChange={(e) => setGridFee(Number(e.target.value))}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                    }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  background: "#2ecc71",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: submitting ? "not-allowed" : "pointer",
+                  fontWeight: "bold",
+                  fontSize: "1rem",
+                }}
+              >
+                {submitting ? "Starting..." : "Run Ingestion + Optimization"}
               </button>
+            </form>
+          )}
+
+          {/* View Options and Pagination Controls */}
+          {!showTriggerForm && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <div className="view-toggle" style={{ display: "flex" }}>
+                <button
+                  className={pageSize === 7 ? "active" : ""}
+                  onClick={() => {
+                    setPageSize(7);
+                    setPage(1);
+                  }}
+                >
+                  Weekly View
+                </button>
+                <button
+                  className={pageSize === 30 ? "active" : ""}
+                  onClick={() => {
+                    setPageSize(30);
+                    setPage(1);
+                  }}
+                >
+                  Monthly View
+                </button>
+              </div>
+
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+              >
+                <span style={{ fontSize: "0.9rem", color: "#666" }}>
+                  Page {page} of {totalPages || 1} ({total} total jobs)
+                </span>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    className="pagination-btn"
+                    disabled={page <= 1 || loading}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    style={{
+                      padding: "0.4rem 0.8rem",
+                      border: "1px solid #e1e4e8",
+                      borderRadius: "6px",
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="pagination-btn"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => setPage((p) => p + 1)}
+                    style={{
+                      padding: "0.4rem 0.8rem",
+                      border: "1px solid #e1e4e8",
+                      borderRadius: "6px",
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {loading && jobs.length === 0 && <p>Loading jobs...</p>}
-      {!loading && jobs.length === 0 && <p>No jobs found. Trigger your first job!</p>}
+          {loading && jobs.length === 0 && <p>Loading jobs...</p>}
+          {!loading && jobs.length === 0 && (
+            <p>No jobs found. Trigger your first job!</p>
+          )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-        {jobs.map(job => (
-          <div 
-            key={job.id} 
-            className="job-card"
+          <div
             style={{
-              ...cardStyle,
-              borderLeft: selectedJob?.id === job.id ? '6px solid #3498db' : '1px solid #e1e4e8'
+              display: "flex",
+              flexDirection: "column",
+              opacity: loading ? 0.6 : 1,
+              transition: "opacity 0.2s",
             }}
-            onClick={() => job.status === 'SUCCESS' && setSelectedJob(job)}
           >
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Job #{job.id}</span>
-                <span style={statusBadgeStyle(job.status)}>{job.status}</span>
-              </div>
-              <div style={{ color: '#666', fontSize: '0.9rem' }}>
-                <span>📅 {new Date(job.start_date).toLocaleDateString()} - {new Date(job.end_date).toLocaleDateString()}</span>
-                <span style={{ marginLeft: '1.5rem' }}>⚙️ α={job.alpha}, fee=${job.grid_fee}</span>
-              </div>
-              {job.status === 'FAILURE' && job.error_message && (
-                <div style={{ 
-                  marginTop: '0.75rem', 
-                  padding: '0.5rem 0.75rem', 
-                  background: '#fff5f5', 
-                  border: '1px solid #feb2b2', 
-                  borderRadius: '6px',
-                  color: '#c53030',
-                  fontSize: '0.85rem',
-                  maxWidth: '80%'
-                }}>
-                  <strong>Error:</strong> {job.error_message}
+            {jobs.map((job) => (
+              <div
+                key={job.id}
+                className="job-card"
+                style={{
+                  ...cardStyle,
+                  borderLeft:
+                    selectedJob?.id === job.id
+                      ? "6px solid #3498db"
+                      : "1px solid #e1e4e8",
+                }}
+                onClick={() => job.status === "SUCCESS" && setSelectedJob(job)}
+              >
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1rem",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    <span style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+                      Job #{job.id}
+                    </span>
+                    <span style={statusBadgeStyle(job.status)}>
+                      {job.status}
+                    </span>
+                  </div>
+                  <div style={{ color: "#666", fontSize: "0.9rem" }}>
+                    <span>
+                      📅 {new Date(job.start_date).toLocaleDateString()} -{" "}
+                      {new Date(job.end_date).toLocaleDateString()}
+                    </span>
+                    <span style={{ marginLeft: "1.5rem" }}>
+                      ⚙️ α={job.alpha}, fee=${job.grid_fee}
+                    </span>
+                  </div>
+                  {job.status === "FAILURE" && job.error_message && (
+                    <div
+                      style={{
+                        marginTop: "0.75rem",
+                        padding: "0.5rem 0.75rem",
+                        background: "#fff5f5",
+                        border: "1px solid #feb2b2",
+                        borderRadius: "6px",
+                        color: "#c53030",
+                        fontSize: "0.85rem",
+                        maxWidth: "80%",
+                      }}
+                    >
+                      <strong>Error:</strong> {job.error_message}
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      marginTop: "0.5rem",
+                      fontSize: "0.8rem",
+                      color: "#999",
+                    }}
+                  >
+                    Created: {new Date(job.created_at).toLocaleString()}
+                  </div>
                 </div>
-              )}
-              <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#999' }}>
-                Created: {new Date(job.created_at).toLocaleString()}
-              </div>
-            </div>
-            
-            <div style={{ textAlign: 'right' }}>
-              {job.net_profit !== undefined && job.net_profit !== null && (
-                <div style={{ 
-                  fontSize: '0.95rem', 
-                  fontWeight: '600', 
-                  color: job.net_profit >= 0 ? '#2ecc71' : '#e74c3c',
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  gap: '0.25rem'
-                }}>
-                  <span style={{ color: '#666', fontWeight: 'normal', marginRight: '0.25rem' }}>Net Profit:</span>
-                  <span style={{ fontSize: '1.1rem' }}>{job.net_profit >= 0 ? '↑' : '↓'}</span>
-                  <span>${Math.abs(job.net_profit).toFixed(2)}</span>
-                </div>
-              )}
-              <div style={{ color: job.status === 'SUCCESS' ? '#3498db' : (job.status === 'FAILURE' ? '#e53e3e' : '#ccc'), fontWeight: 'bold' }}>
-                {job.status === 'SUCCESS' ? 'View Analysis →' : (job.status === 'FAILURE' ? 'Job Failed' : 'Wait for success...')}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Bottom Pagination for convenience in Monthly View */}
-      {pageSize > 10 && totalPages > 1 && !showTriggerForm && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem', gap: '1rem', alignItems: 'center' }}>
-           <button 
+                <div style={{ textAlign: "right" }}>
+                  {job.net_profit !== undefined && job.net_profit !== null && (
+                    <div
+                      style={{
+                        fontSize: "0.95rem",
+                        fontWeight: "600",
+                        color: job.net_profit >= 0 ? "#2ecc71" : "#e74c3c",
+                        marginBottom: "0.5rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: "0.25rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#666",
+                          fontWeight: "normal",
+                          marginRight: "0.25rem",
+                        }}
+                      >
+                        Net Profit:
+                      </span>
+                      <span style={{ fontSize: "1.1rem" }}>
+                        {job.net_profit >= 0 ? "↑" : "↓"}
+                      </span>
+                      <span>${Math.abs(job.net_profit).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      color:
+                        job.status === "SUCCESS"
+                          ? "#3498db"
+                          : job.status === "FAILURE"
+                            ? "#e53e3e"
+                            : "#ccc",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {job.status === "SUCCESS"
+                      ? "View Analysis →"
+                      : job.status === "FAILURE"
+                        ? "Job Failed"
+                        : "Wait for success..."}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom Pagination for convenience in Monthly View */}
+          {pageSize > 10 && totalPages > 1 && !showTriggerForm && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: "2rem",
+                gap: "1rem",
+                alignItems: "center",
+              }}
+            >
+              <button
                 className="pagination-btn"
                 disabled={page <= 1 || loading}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 style={{
-                  padding: '0.6rem 1.2rem',
-                  border: '1px solid #e1e4e8',
-                  borderRadius: '6px',
-                  background: '#fff',
-                  cursor: 'pointer'
+                  padding: "0.6rem 1.2rem",
+                  border: "1px solid #e1e4e8",
+                  borderRadius: "6px",
+                  background: "#fff",
+                  cursor: "pointer",
                 }}
               >
                 Previous Page
               </button>
-              <span style={{ fontWeight: '500' }}>{page} / {totalPages}</span>
-              <button 
+              <span style={{ fontWeight: "500" }}>
+                {page} / {totalPages}
+              </span>
+              <button
                 className="pagination-btn"
                 disabled={page >= totalPages || loading}
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => setPage((p) => p + 1)}
                 style={{
-                  padding: '0.6rem 1.2rem',
-                  border: '1px solid #e1e4e8',
-                  borderRadius: '6px',
-                  background: '#fff',
-                  cursor: 'pointer'
+                  padding: "0.6rem 1.2rem",
+                  border: "1px solid #e1e4e8",
+                  borderRadius: "6px",
+                  background: "#fff",
+                  cursor: "pointer",
                 }}
               >
                 Next Page
               </button>
-        </div>
-      )}
-
-      {/* Dashboard Modal */}
-      {selectedJob && (
-        <div style={modalOverlayStyle} onClick={handleCloseModal}>
-          <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <div>
-                <h2 style={{ margin: 0 }}>Analysis for Job #{selectedJob.id}</h2>
-                <p style={{ color: '#666', margin: 0 }}>
-                  Range: {new Date(selectedJob.start_date).toLocaleDateString()} - {new Date(selectedJob.end_date).toLocaleDateString()}
-                </p>
-              </div>
-              <button 
-                onClick={handleCloseModal}
-                style={{ 
-                  padding: '0.5rem 1rem', 
-                  background: '#e74c3c', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                Close (Esc)
-              </button>
             </div>
-            
-            <Dashboard 
-              startDate={selectedJob.start_date.split('T')[0]} 
-              endDate={selectedJob.end_date.split('T')[0]} 
-            />
-          </div>
-        </div>
-      )}
+          )}
+
+          {/* Dashboard Modal */}
+          {selectedJob && (
+            <div style={modalOverlayStyle} onClick={handleCloseModal}>
+              <div
+                style={modalContentStyle}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  <div>
+                    <h2 style={{ margin: 0 }}>
+                      Analysis for Job #{selectedJob.id}
+                    </h2>
+                    <p style={{ color: "#666", margin: 0 }}>
+                      Range:{" "}
+                      {new Date(selectedJob.start_date).toLocaleDateString()} -{" "}
+                      {new Date(selectedJob.end_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCloseModal}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      background: "#e74c3c",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Close (Esc)
+                  </button>
+                </div>
+
+                <Dashboard
+                  startDate={selectedJob.start_date.split("T")[0]}
+                  endDate={selectedJob.end_date.split("T")[0]}
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -14,10 +14,10 @@ if bentoml models list | grep -q "$MODEL_NAME"; then
     echo "✅ Model found. Starting BentoML service..."
 else
     echo "⚠️ Model not found. Starting consolidated training routine..."
-    
+
     # Run the consolidated training and registration script
     python src/train_model.py
-    
+
     echo "✅ Training and registration complete. Starting BentoML service..."
 fi
 

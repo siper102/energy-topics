@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 aad = { path = "../../../../rust-crates/aad" }
 anyhow = "1.0.100"
 ndarray = { version = "0.17", features = ["rayon"] }
-ndarray-rand = "0.16" 
+ndarray-rand = "0.16"
 numpy = { version = "0.27.1", optional = true }
 pyo3 = { version = "0.27.2", features = ["extension-module"], optional = true }
 rayon = "1.10.0"

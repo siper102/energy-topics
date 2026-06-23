@@ -456,9 +456,9 @@ impl Float for AADVar {
             index: new_index,
         }
     }
-    
+
     // --- Inverse Hyperbolic Functions ---
-    
+
     fn asinh(self) -> Self {
         let res = self.value.asinh();
         let deriv = 1.0 / (self.value * self.value + 1.0).sqrt();
